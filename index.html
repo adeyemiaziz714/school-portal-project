@@ -1,0 +1,1231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>School Management Portal</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>    
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background: #f4f7f6; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 400px; }
+        input, select, button { width: 100%; padding: 10px; margin: 8px 0; box-sizing: border-box; }
+        button { background-color: #3ecf8e; color: white; border: none; font-weight: bold; cursor: pointer; }
+        button:hover { background-color: #34b27b; }
+    </style>
+</head>
+<body> <h2>School Management Portal</h2>
+    
+    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+        
+        <div class="card">
+            <h3>Create Account</h3>
+            <input type="text" id="fullName" placeholder="Full Name" required />
+            <input type="email" id="email" placeholder="Email Address" required />
+            <input type="password" id="password" placeholder="Password (min 6 chars)" required />
+            <select id="role">
+                <option value="student">Student</option>
+                <option value="teacher">Teacher</option>
+                <option value="parent">Parent</option> </select>
+            <button id="btnSignUp">Create Account</button>
+        </div>
+ 
+        <div class="card">
+            <h3>User Login</h3>
+            <input type="email" id="loginEmail" placeholder="Email Address" required />
+            <input type="password" id="loginPassword" placeholder="Password" required />
+            <button id="btnLogin" style="background-color: #2483ec;">Log In</button>
+        </div>
+        
+    </div>
+ 
+    <div id="dashboardSection" style="display: none; max-width: 600px; margin-top: 20px;" class="card">
+        <button id="btnLogout" style="background-color: #ff4a4a; width: auto; float: right;">Log Out</button>
+        <h2 id="welcomeText">Welcome back!</h2>
+        <p id="roleText" style="font-weight: bold; color: #666; margin-bottom: 20px;"></p>
+        
+        <div id="globalNoticeBoard" style="margin-bottom: 25px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e3e6ea; display:none;">
+            <h3 style="margin-top: 0; color: #333; font-size: 18px; display: flex; align-items: center; gap: 8px;">📢 Institutional Bulletins & Notices</h3>
+            <div id="noticeFeedContainer">Loading bulletins...</div>
+        </div>
+ 
+        <div id="portalContent"></div>
+    </div>
+ 
+    <script>
+        // 1. Initialize Supabase Client
+        const SUPABASE_URL = "https://jrhvbtmrjqevdonehhdk.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpyaHZidG1yanFldmRvbmVoaGRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyMDIzODUsImV4cCI6MjA5NDc3ODM4NX0.dycnNGLfCa8jCm234gBhRmImLRrVOCniYvQ_1qr8qZA";
+ 
+        const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+ 
+        // --- GLOBAL FUNCTION: Fetch and Render School Notices ---
+        const loadGlobalNoticeBoard = async () => {
+            const noticeBoard = document.getElementById('globalNoticeBoard');
+            const feedContainer = document.getElementById('noticeFeedContainer');
+            
+            try {
+                const { data: notices, error: fetchErr } = await client
+                    .from('announcements')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .limit(5);
+ 
+                if (fetchErr) throw fetchErr;
+ 
+                if (!notices || notices.length === 0) {
+                    noticeBoard.style.display = 'none';
+                    return;
+                }
+ 
+                noticeBoard.style.display = 'block';
+                feedContainer.innerHTML = ""; 
+ 
+                notices.forEach(notice => {
+                    let badgeColor = "#2483ec"; 
+                    let backgroundColor = "#f4f7fc";
+                    let borderColor = "#cbd5e1";
+                    let priorityIcon = "ℹ️";
+ 
+                    if (notice.priority_level === 'Warning') {
+                        badgeColor = "#e0a914"; 
+                        backgroundColor = "#fffbeb";
+                        borderColor = "#fef3c7";
+                        priorityIcon = "⚠️";
+                    } else if (notice.priority_level === 'Emergency') {
+                        badgeColor = "#ff4a4a"; 
+                        backgroundColor = "#fef2f2";
+                        borderColor = "#fee2e2";
+                        priorityIcon = "🚨";
+                    }
+ 
+                    const alertBox = document.createElement('div');
+                    alertBox.style.cssText = `background: ${backgroundColor}; border: 1px solid ${borderColor}; border-left: 5px solid ${badgeColor}; padding: 12px 15px; margin-bottom: 10px; border-radius: 6px; color: #333; text-align: left;`;
+                    
+                    alertBox.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                            <span style="background: ${badgeColor}; color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; text-transform: uppercase;">
+                                ${priorityIcon} ${notice.priority_level} Notice
+                            </span>
+                            <small style="color: #777; font-size: 12px;">By: ${notice.author_name} | ${new Date(notice.created_at).toLocaleDateString()}</small>
+                        </div>
+                        <strong style="display: block; font-size: 15px; margin-bottom: 4px; color: #111;">${notice.title}</strong>
+                        <p style="margin: 0; font-size: 14px; line-height: 1.4; color: #444;">${notice.message}</p>
+                    `;
+                    feedContainer.appendChild(alertBox);
+                });
+ 
+            } catch (err) {
+                console.error("Notice Board Error:", err.message);
+            }
+        };
+
+        // 2. Listen for the click on the "Create Account" button
+        document.getElementById('btnSignUp').addEventListener('click', async () => {
+            const fullName = document.getElementById('fullName').value;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const role = document.getElementById('role').value;
+ 
+            if(!email || !password || !fullName) {
+                alert("Please fill in all fields!");
+                return;
+            }
+ 
+            try {
+                const { data, error } = await client.auth.signUp({
+                    email: email,
+                    password: password,
+                });
+ 
+                if (error) throw error;
+ 
+                const { error: profileError } = await client
+                    .from('profiles')
+                    .insert([{ id: data.user.id, full_name: fullName, role: role }]);
+ 
+                if (profileError) throw profileError;
+ 
+                alert('Account created successfully! Check your email for a confirmation link.');
+                
+            } catch (error) {
+                alert('Error: ' + error.message);
+                console.error(error);
+            }
+        });
+// ==========================================
+// CLEAN, FULLY STRUCTURED LOGIN & ROLE ROUTER
+// ==========================================
+document.getElementById('btnLogin').addEventListener('click', async () => {
+    const email = document.getElementById('loginEmail').value;
+    const password = document.getElementById('loginPassword').value;
+
+    if(!email || !password) {
+        alert("Please enter both email and password!");
+        return;
+    }
+
+    try {
+        // 1. Log the user in using Supabase Auth
+        const { data, error } = await client.auth.signInWithPassword({
+            email: email,
+            password: password,
+        });
+
+        if (error) throw error;
+
+        const userId = data.user.id;
+
+        // 2. Fetch the user's profile information
+        const { data: profile, error: profileError } = await client
+            .from('profiles')
+            .select('full_name, role')
+            .eq('id', userId)
+            .single();
+
+        if (profileError) throw profileError;
+
+        // 🏫 UNIVERSAL VISIBILITY FIX:
+        const dashboardEl = document.getElementById('dashboardSection') || document.getElementById('dashboard');
+        
+        if (dashboardEl) dashboardEl.style.display = 'block';
+
+        // LAUNCH THE BULLETIN BOARD:
+        setTimeout(() => {
+            if (typeof loadGlobalNoticeBoard === 'function') {
+                loadGlobalNoticeBoard();
+            }
+        }, 100);
+
+        // RENDER THE DASHBOARD CUSTOM MENUS BASED ON ROLE:
+        document.getElementById('welcomeText').innerText = `Welcome back, ${profile.full_name}!`;
+        
+        if (profile.role === 'teacher') {
+            // Teacher Menu Dashboard Persona
+            document.getElementById('roleText').innerText = "👨‍🏫 Role: Teacher Account";
+            
+            document.getElementById('portalContent').innerHTML = `
+                <p><strong>Teacher Menu:</strong></p>
+                <button id="btnShowClassForm" style="background-color: #3ecf8e; width:auto; margin-right:10px;">+ Create a New Class</button>
+                <button id="btnShowGradeForm" style="background-color: #2483ec; width:auto; margin-right:10px;">+ Record Weekly Test Grade</button>
+                <button id="btnShowAttendanceForm" style="background-color: #e0a914; width:auto; margin-right:10px;">📅 Log Daily Attendance</button>
+                <button id="btnShowLmsForm" style="background-color: #f72585; width:auto;">📚 Upload Lesson Materials</button>
+
+                <div id="classForm" style="display: none; margin-top: 20px; border-top: 1px solid #ccc; padding-top: 15px;">
+                    <h4>Add New Class Details</h4>
+                    <input type="text" id="className" placeholder="e.g. Algebra 101" required />
+                    <input type="text" id="roomNumber" placeholder="e.g. Room 304" required />
+                    <button id="btnSaveClass" style="background-color: #3ecf8e;">Save Class to Portal</button>
+                </div>
+
+                <div id="gradeForm" style="display: none; margin-top: 20px; border-top: 1px solid #2483ec; padding-top: 15px;">
+                    <h4>Record Student Test Grade</h4>
+                    <input type="text" id="gradeClassId" placeholder="Paste Class ID here" required />
+                    <input type="text" id="gradeStudentId" placeholder="Paste Student ID here" required />
+                    <input type="number" id="gradeWeek" placeholder="Week Number (e.g. 1)" min="1" required />
+                    <input type="number" id="gradeScore" placeholder="Score (e.g. 85)" min="0" max="100" required />
+                    <button id="btnSaveGrade" style="background-color: #2483ec;">Submit Grade to Database</button>
+                </div>
+
+                <div id="attendanceForm" style="display: none; margin-top: 20px; border-top: 1px solid #e0a914; padding-top: 15px;">
+                    <h4>Log Daily Student Attendance</h4>
+                    <input type="text" id="attnClassId" placeholder="Class ID number" required />
+                    <input type="text" id="attnStudentId" placeholder="Paste Student ID here" required />
+                    <input type="date" id="attnDate" required />
+                    <select id="attnStatus" style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 4px; border: 1px solid #ccc; background: white; color: #333;">
+                        <option value="Present">Present ✅</option>
+                        <option value="Late">Late ⏰</option>
+                        <option value="Absent">Absent ❌</option>
+                    </select>
+                    <button id="btnSaveAttendance" style="background-color: #e0a914;">Submit Attendance Record</button>
+                </div>
+
+                <div id="lmsForm" style="display: none; margin-top: 20px; border-top: 1px solid #f72585; padding-top: 15px;">
+                    <h4>Upload Course Notes / Assignments</h4>
+                    <input type="text" id="lmsClassId" placeholder="Class ID number" required />
+                    <input type="text" id="lmsTitle" placeholder="e.g. Chapter 1 Notes" required />
+                    <label style="display:block; margin-bottom:5px; font-weight:bold; color:#333;">Material Type:</label>
+                    <select id="lmsType" style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 4px; border: 1px solid #ccc; background: white; color: #333;">
+                        <option value="Note">Lecture Note 📝</option>
+                        <option value="Assignment">Assignment Task 📂</option>
+                    </select>
+                    <label style="display:block; margin-bottom:5px; font-weight:bold; color:#333;">Select Document File:</label>
+                    <input type="file" id="lmsFile" style="margin-bottom: 15px;" required />
+                    <button id="btnSaveLms" style="background-color: #f72585;">Upload File to Cloud Vault</button>
+                </div>
+
+                <div style="margin-top: 25px; border-top: 2px solid #3ecf8e; padding-top: 15px;">
+                    <h4>Your Active Classes</h4>
+                    <div id="teacherClassesContainer">Loading your schedule...</div>
+                </div>
+            `;
+
+            // Form Visibility Controllers
+            document.getElementById('btnShowClassForm').addEventListener('click', () => {
+                document.getElementById('lmsForm').style.display = 'none'; 
+                document.getElementById('gradeForm').style.display = 'none'; 
+                document.getElementById('attendanceForm').style.display = 'none'; 
+                document.getElementById('classForm').style.display = 'block'; 
+            });
+
+            document.getElementById('btnShowGradeForm').addEventListener('click', () => {
+                document.getElementById('lmsForm').style.display = 'none'; 
+                document.getElementById('classForm').style.display = 'none'; 
+                document.getElementById('attendanceForm').style.display = 'none'; 
+                document.getElementById('gradeForm').style.display = 'block'; 
+            });
+
+            document.getElementById('btnShowAttendanceForm').addEventListener('click', () => {
+                document.getElementById('lmsForm').style.display = 'none'; 
+                document.getElementById('classForm').style.display = 'none'; 
+                document.getElementById('gradeForm').style.display = 'none'; 
+                document.getElementById('attendanceForm').style.display = 'block'; 
+                document.getElementById('attnDate').valueAsDate = new Date();
+            });
+
+            document.getElementById('btnShowLmsForm').addEventListener('click', () => {
+                document.getElementById('classForm').style.display = 'none'; 
+                document.getElementById('gradeForm').style.display = 'none'; 
+                document.getElementById('attendanceForm').style.display = 'none'; 
+                document.getElementById('lmsForm').style.display = 'block'; 
+            });
+
+            // Save Class Logic
+            document.getElementById('btnSaveClass').addEventListener('click', async () => {
+                const name = document.getElementById('className').value.trim();
+                const room = document.getElementById('roomNumber').value.trim();
+                if (!name || !room) return alert("Fill all fields");
+                try {
+                    const { error } = await client.from('classes').insert([{ class_name: name, room_number: room, teacher_id: userId }]);
+                    if (error) throw error;
+                    alert("Class Saved!");
+                    document.getElementById('className').value = '';
+                    document.getElementById('roomNumber').value = '';
+                    loadTeacherClasses();
+                } catch (err) { alert(err.message); }
+            });
+
+            // Save Grade Logic
+            document.getElementById('btnSaveGrade').addEventListener('click', async () => {
+                const cid = document.getElementById('gradeClassId').value.trim();
+                const sid = document.getElementById('gradeStudentId').value.trim();
+                const wk = document.getElementById('gradeWeek').value;
+                const sc = document.getElementById('gradeScore').value;
+                if(!cid || !sid || !wk || !sc) return alert("Fill all fields");
+                try {
+                    const { error } = await client.from('grades').insert([{ class_id: parseInt(cid), student_id: sid, week_number: parseInt(wk), score: parseFloat(sc) }]);
+                    if (error) throw error;
+                    alert("Grade Recorded!");
+                    document.getElementById('gradeStudentId').value = '';
+                    document.getElementById('gradeScore').value = '';
+                } catch (err) { alert(err.message); }
+            });
+
+            // Save Attendance Logic
+            document.getElementById('btnSaveAttendance').addEventListener('click', async () => {
+                const classId = document.getElementById('attnClassId').value.trim();
+                const studentId = document.getElementById('attnStudentId').value.trim();
+                const dateVal = document.getElementById('attnDate').value;
+                const statusVal = document.getElementById('attnStatus').value;
+                if(!classId || !studentId || !dateVal) return alert("Fill all fields");
+                try {
+                    const { error: attnErr } = await client.from('attendance').insert([{ class_id: parseInt(classId), student_id: studentId, attendance_date: dateVal, status: statusVal }]);
+                    if (attnErr) {
+                        if (attnErr.code === '23505') throw new Error("Attendance already logged for this student today!");
+                        throw attnErr;
+                    }
+                    alert(`Marked as ${statusVal}`);
+                    document.getElementById('attnStudentId').value = '';
+                } catch (err) { alert(err.message); }
+            });
+
+            // Save LMS Upload Logic
+            document.getElementById('btnSaveLms').addEventListener('click', async () => {
+                const classId = document.getElementById('lmsClassId').value.trim();
+                const titleVal = document.getElementById('lmsTitle').value.trim();
+                const typeVal = document.getElementById('lmsType').value;
+                const fileInput = document.getElementById('lmsFile');
+                if (!classId || !titleVal || fileInput.files.length === 0) return alert("Fill all fields");
+                const file = fileInput.files[0];
+                const uniqueFileName = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
+                try {
+                    const btn = document.getElementById('btnSaveLms');
+                    btn.innerText = "Uploading..."; btn.disabled = true;
+                    const { error: storageErr } = await client.storage.from('school-resources').upload(uniqueFileName, file);
+                    if (storageErr) throw storageErr;
+                    const { data: urlData } = client.storage.from('school-resources').getPublicUrl(uniqueFileName);
+                    const { error: dbErr } = await client.from('lms_materials').insert([{ class_id: parseInt(classId), title: titleVal, material_type: typeVal, file_url: urlData.publicUrl }]);
+                    if (dbErr) throw dbErr;
+                    alert("Uploaded Successfully!");
+                    document.getElementById('lmsTitle').value = ''; fileInput.value = '';
+                    document.getElementById('lmsForm').style.display = 'none';
+                } catch (err) { alert(err.message); }
+                finally {
+                    const btn = document.getElementById('btnSaveLms');
+                    btn.innerText = "Upload File to Cloud Vault"; btn.disabled = false;
+                }
+            });
+
+            const loadTeacherClasses = async () => {
+                try {
+                    const { data, error } = await client.from('classes').select('*').eq('teacher_id', userId);
+                    if (error) throw error;
+                    const container = document.getElementById('teacherClassesContainer');
+                    if(!data || data.length === 0) {
+                        container.innerHTML = "<p>No active classes scheduled.</p>";
+                        return;
+                    }
+                    container.innerHTML = "";
+                    data.forEach(c => {
+                        const item = document.createElement('div');
+                        item.style.cssText = "background:#f4f4f4; padding:10px; margin-bottom:5px; border-radius:4px; color:#333;";
+                        item.innerHTML = `🏫 <strong>${c.class_name}</strong> (ID: ${c.id}) - 📍 ${c.room_number}`;
+                        container.appendChild(item);
+                    });
+                } catch (err) { console.error(err); }
+            };
+            loadTeacherClasses();
+
+        } else if (profile.role === 'principal' || profile.role === 'admin') {
+            // EXECUTIVE PRINCIPAL PORTAL
+            document.getElementById('roleText').innerText = "👑 Role: School Principal / Admin";
+            
+            document.getElementById('portalContent').innerHTML = `
+                <p><strong>Administrative Command Center:</strong></p>
+                <button id="btnRefreshReviews" style="background-color: #3ecf8e; width:auto; margin-bottom: 20px; margin-right: 10px;">🔄 Refresh Evaluation Feed</button>
+                <button id="btnToggleNoticeForm" style="background-color: #2483ec; width:auto; margin-bottom: 20px;">📢 Broadcast New Announcement</button>
+
+                <div id="noticeComposerForm" style="display: none; margin-bottom: 25px; padding: 15px; border: 1px solid #2483ec; border-radius: 6px; background: #fff;">
+                    <h4>Compose Institutional Bulletin</h4>
+                    <input type="text" id="noticeTitle" placeholder="Notice Heading (e.g. End of Term Seminar Dates)" required />
+                    <textarea id="noticeMessage" placeholder="Type your formal statement or description here..." rows="4" style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 4px; border: 1px solid #ccc; font-family: inherit; box-sizing: border-box;" required></textarea>
+                    
+                    <label style="display:block; margin-bottom:5px; font-weight:bold; color:#333;">Priority Urgency Level:</label>
+                    <select id="noticePriority" style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 4px; border: 1px solid #ccc; background: white; color: #333;">
+                        <option value="General">General Info ℹ️</option>
+                        <option value="Warning">Warning Alert ⚠️</option>
+                        <option value="Emergency">Critical Emergency 🚨</option>
+                    </select>
+                    <button id="btnPublishNotice" style="background-color: #2483ec;">Publish Notice to Board</button>
+                </div>
+
+                <div style="margin-top: 10px; border-top: 2px solid #9b5de5; padding-top: 15px;">
+                    <h4>Active Teacher Evaluations & Feedback</h4>
+                    <p style="color: #666; font-size: 14px;">Review real-time performance indicators and student complaints to manage school standards.</p>
+                    <div id="principalReviewsContainer">Loading administration feeds...</div>
+                </div>
+            `;
+
+            document.getElementById('btnToggleNoticeForm').addEventListener('click', () => {
+                const form = document.getElementById('noticeComposerForm');
+                form.style.display = form.style.display === 'none' ? 'block' : 'none';
+            });
+
+            document.getElementById('btnPublishNotice').addEventListener('click', async () => {
+                const titleVal = document.getElementById('noticeTitle').value.trim();
+                const messageVal = document.getElementById('noticeMessage').value.trim();
+                const priorityVal = document.getElementById('noticePriority').value;
+
+                if (!titleVal || !messageVal) {
+                    alert("Please provide a title and a message body for your notice!");
+                    return;
+                }
+
+                try {
+                    const { error: postErr } = await client
+                        .from('announcements')
+                        .insert([{ title: titleVal, message: messageVal, priority_level: priorityVal, author_name: "Principal Administration" }]);
+
+                    if (postErr) throw postErr;
+
+                    alert("Bulletin board updated! Announcement broadcasted successfully.");
+                    document.getElementById('noticeTitle').value = '';
+                    document.getElementById('noticeMessage').value = '';
+                    document.getElementById('noticeComposerForm').style.display = 'none';
+                    loadGlobalNoticeBoard();
+
+                } catch (err) { alert("Failed to broadcast announcement: " + err.message); }
+            });
+
+            const loadPrincipalReviewFeed = async () => {
+                const feedContainer = document.getElementById('principalReviewsContainer');
+                feedContainer.innerHTML = "Querying academic records...";
+
+                try {
+                    const { data: allReviews, error: fetchErr } = await client
+                        .from('reviews')
+                        .select(`rating, feedback_text, created_at, classes ( class_name, room_number )`)
+                        .order('created_at', { ascending: false });
+
+                    if (fetchErr) throw fetchErr;
+
+                    if (!allReviews || allReviews.length === 0) {
+                        feedContainer.innerHTML = "<p style='color:#666;'>No class evaluations have been submitted by students yet.</p>";
+                        return;
+                    }
+
+                    feedContainer.innerHTML = "";
+                    allReviews.forEach(review => {
+                        const className = review.classes ? review.classes.class_name : "Unknown Subject";
+                        const roomName = review.classes ? review.classes.room_number : "N/A";
+                        const starDisplay = "⭐".repeat(review.rating);
+                        let cardBorderColor = "#3ecf8e";
+                        if (review.rating <= 3) cardBorderColor = "#e0a914";
+                        if (review.rating <= 2) cardBorderColor = "#ff4a4a";
+
+                        const row = document.createElement('div');
+                        row.style.cssText = `background: #fff; padding: 15px; margin-bottom: 12px; border-radius: 6px; border-left: 5px solid ${cardBorderColor}; box-shadow: 0 2px 5px rgba(0,0,0,0.05); color:#333; text-align: left;`;
+                        row.innerHTML = `
+                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                                <div>
+                                    <strong style="font-size: 16px;">Subject: ${className}</strong> <br/>
+                                    <small style="color: #666;">📍 Location: ${roomName}</small>
+                                </div>
+                                <span style="font-size: 14px; background: #f0f0f0; padding: 4px 8px; border-radius: 4px;">${starDisplay}</span>
+                            </div>
+                            <div style="background: #f9f9f9; padding: 10px; border-radius: 4px; font-style: italic; color: #444; font-size: 14px; border-left: 2px solid #ddd;">
+                                "${review.feedback_text ? review.feedback_text : "No written comments left by student."}"
+                            </div>
+                            <div style="text-align: right; margin-top: 5px;">
+                                <small style="color: #999; font-size: 11px;">Submitted: ${new Date(review.created_at).toLocaleDateString()}</small>
+                            </div>
+                        `;
+                        feedContainer.appendChild(row);
+                    });
+
+                } catch (err) { feedContainer.innerHTML = "<p style='color:red;'>Failed to load review stream: " + err.message + "</p>"; }
+            };
+
+            loadPrincipalReviewFeed();
+            document.getElementById('btnRefreshReviews').addEventListener('click', loadPrincipalReviewFeed);
+
+        } else if (profile.role === 'parent') {
+            // 👪 NEW INTERACTIVE PARENT PORTAL HUB
+            document.getElementById('roleText').innerText = "👪 Role: Parent / Guardian Account";
+            
+            document.getElementById('portalContent').innerHTML = `
+                <p><strong>Parent Connection Command Center:</strong></p>
+                <button id="btnShowChildGrades" style="background-color: #2483ec; width:auto; margin-right:10px;">📊 Linked Student Grades</button>
+                <button id="btnShowCommHub" style="background-color: #9b5de5; width:auto;">💬 Communication Hub</button>
+
+                <div id="parentChildSection" style="margin-top: 20px; border-top: 2px solid #2483ec; padding-top: 15px; display: none; text-align: left;">
+                    <h4>Linked Student Progress Analytics</h4>
+                    <div id="childGradesContainer" style="color: #333;">Loading linked child dashboard records...</div>
+                </div>
+
+                <div id="parentCommSection" style="margin-top: 20px; border-top: 2px solid #9b5de5; padding-top: 15px; display: none; text-align: left;">
+                    <h4>Institutional Chat Rooms & Forums</h4>
+                    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                        <button id="btnOpenTeacherDM" style="background-color: #007bff; font-size: 13px; padding: 8px;">Direct Message Subject Teachers</button>
+                        <button id="btnOpenParentForum" style="background-color: #6c757d; font-size: 13px; padding: 8px;">Parent Community PTA Forum</button>
+                    </div>
+
+                    <div id="parentDmModule" style="display: none; background: #fff; padding: 15px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                        <h5>📨 Private Teacher Thread</h5>
+                        <input type="text" id="msgTeacherId" placeholder="Paste Teacher Account Profile ID" required />
+                        <textarea id="parentTeacherTxt" placeholder="Type your message directly to the classroom constructor..." rows="3" style="width:100%; box-sizing:border-box; border-radius:4px; padding:8px; font-family:inherit; margin-bottom:10px;"></textarea>
+                        <button id="btnSendTeacherMsg" style="background-color: #007bff;">Transmit Private Message</button>
+                    </div>
+
+                    <div id="parentForumModule" style="display: none; background: #fff; padding: 15px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                        <h5>🗣️ Open Community Forum</h5>
+                        <div id="forumChatFeed" style="height: 200px; overflow-y: auto; background: #f8f9fa; border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; border-radius: 4px;">Loading chats...</div>
+                        <textarea id="parentForumTxt" placeholder="Post a response or inquiry to the general parent board..." rows="2" style="width:100%; box-sizing:border-box; border-radius:4px; padding:8px; font-family:inherit; margin-bottom:10px;"></textarea>
+                        <button id="btnSendForumMsg" style="background-color: #6c757d;">Broadcast to Forum</button>
+                    </div>
+                </div>
+            `;
+
+            // Parent Workspace Submenu Visibility Layout Triggers
+            document.getElementById('btnShowChildGrades').addEventListener('click', () => {
+                document.getElementById('parentCommSection').style.display = 'none';
+                document.getElementById('parentChildSection').style.display = 'block';
+                loadLinkedChildMetrics();
+            });
+
+            document.getElementById('btnShowCommHub').addEventListener('click', () => {
+                document.getElementById('parentChildSection').style.display = 'none';
+                document.getElementById('parentCommSection').style.display = 'block';
+            });
+
+            document.getElementById('btnOpenTeacherDM').addEventListener('click', () => {
+                document.getElementById('parentForumModule').style.display = 'none';
+                document.getElementById('parentDmModule').style.display = 'block';
+            });
+
+            document.getElementById('btnOpenParentForum').addEventListener('click', () => {
+                document.getElementById('parentDmModule').style.display = 'none';
+                document.getElementById('parentForumModule').style.display = 'block';
+                loadPTAForumStream();
+            });
+
+            // --- FUNCTION: Query and Render Linked Child Performance ---
+            const loadLinkedChildMetrics = async () => {
+                const box = document.getElementById('childGradesContainer');
+                try {
+                    const { data: links, error: linkErr } = await client.from('parent_child_links').select('student_id').eq('parent_id', userId);
+                    if (linkErr) throw linkErr;
+                    if(!links || links.length === 0) {
+                        box.innerHTML = "<p style='color:#666;'>No registered students are linked to your profile code yet.</p>";
+                        return;
+                    }
+                    
+                    const childIds = links.map(l => l.student_id);
+                    const { data: scores, error: scoreErr } = await client.from('grades').select(`week_number, score, classes(class_name), profiles!grades_student_id_fkey(full_name)`).in('student_id', childIds);
+                    if (scoreErr) throw scoreErr;
+
+                    if(!scores || scores.length === 0) {
+                        box.innerHTML = "<p style='color:#666;'>Student linked successfully. No continuous evaluation scores found.</p>";
+                        return;
+                    }
+
+                    box.innerHTML = scores.map(s => `
+                        <div style="background:#f8f9fa; padding:10px; margin-bottom:8px; border-left:4px solid #2483ec; border-radius:4px;">
+                            <strong>Child:</strong> ${s.profiles ? s.profiles.full_name : 'Linked Student'} <br/>
+                            <strong>Subject:</strong> ${s.classes ? s.classes.class_name : 'General'} (Week ${s.week_number})<br/>
+                            <strong>Performance Score:</strong> <span style="font-weight:bold; color:#2483ec;">${s.score} / 100</span>
+                        </div>
+                    `).join('');
+                } catch(err) { box.innerHTML = "<span style='color:red;'>Link Query Error: " + err.message + "</span>"; }
+            };
+
+            // --- FUNCTION: General Message Hub Actions ---
+            document.getElementById('btnSendTeacherMsg').addEventListener('click', async () => {
+                const targetTeacher = document.getElementById('msgTeacherId').value.trim();
+                const text = document.getElementById('parentTeacherTxt').value.trim();
+                if(!targetTeacher || !text) return alert("Please fill complete rows!");
+                try {
+                    const { error } = await client.from('messages').insert([{ sender_id: userId, receiver_id: targetTeacher, room_type: 'direct', message_text: text }]);
+                    if(error) throw error;
+                    alert("Message securely transmitted!");
+                    document.getElementById('parentTeacherTxt').value = '';
+                } catch(err) { alert(err.message); }
+            });
+
+            const loadPTAForumStream = async () => {
+                const feed = document.getElementById('forumChatFeed');
+                try {
+                    const { data, error } = await client.from('messages').select(`message_text, created_at, profiles!messages_sender_id_fkey(full_name)`).eq('room_type', 'parent_forum').order('created_at', { ascending: true });
+                    if(error) throw error;
+                    feed.innerHTML = data.map(m => `
+                        <div style="margin-bottom:8px; padding:5px; background:#fff; border-radius:4px; font-size:13px; box-shadow:0 1px 2px rgba(0,0,0,0.05);">
+                            <strong style="color:#9b5de5;">${m.profiles ? m.profiles.full_name : 'Parent Account'}:</strong> ${m.message_text}
+                        </div>
+                    `).join('');
+                    feed.scrollTop = feed.scrollHeight;
+                } catch(err) { feed.innerHTML = "Error rendering chats."; }
+            };
+
+            document.getElementById('btnSendForumMsg').addEventListener('click', async () => {
+                const text = document.getElementById('parentForumTxt').value.trim();
+                if(!text) return;
+                try {
+                    const { error } = await client.from('messages').insert([{ sender_id: userId, room_type: 'parent_forum', message_text: text }]);
+                    if(error) throw error;
+                    document.getElementById('parentForumTxt').value = '';
+                    loadPTAForumStream();
+                } catch(err) { alert(err.message); }
+            });
+
+        } else {
+            // Student Menu Dashboard Persona
+            document.getElementById('roleText').innerText = "🎓 Role: Student Account";
+            document.getElementById('portalContent').innerHTML = `
+                <p><strong>Student Menu:</strong></p>
+                <button id="btnBrowseClasses" style="background-color: #3ecf8e; width:auto; margin-right:10px;">Browse & Enroll in Classes</button>
+                <button id="btnShowMySchedule" style="background-color: #3ecf8e; width:auto; margin-right:10px;">My Class Schedule</button>
+                <button id="btnShowReportCard" style="background-color: #2483ec; width:auto; margin-right:10px;">📊 View My Report Card</button>
+                <button id="btnShowMyAttendance" style="background-color: #e0a914; width:auto; margin-right:10px;">📈 View My Attendance</button>
+                <button id="btnShowReviewForm" style="background-color: #9b5de5; width:auto; margin-right:10px;">⭐ Rate My Classes</button>
+                <button id="btnShowLmsViewer" style="background-color: #f72585; width:auto;">📚 Course Notes & Assignments</button>
+
+                <div id="classList" style="margin-top: 20px; border-top: 1px solid #ccc; padding-top: 15px; display: none;">
+                    <h4>Available School Classes</h4>
+                    <div id="classesContainer">Loading classes...</div>
+                </div>
+
+                <div id="myScheduleSection" style="margin-top: 20px; border-top: 2px solid #2483ec; padding-top: 15px; display: none;">
+                    <h4>Your Enrolled Classes</h4>
+                    <div id="myScheduleContainer">Loading your schedule...</div>
+                </div>
+
+                <div id="reportCardSection" style="margin-top: 20px; border-top: 2px solid #e0a914; padding-top: 15px; display: none;">
+                    <h4>Your Weekly Test Grades</h4>
+                    <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; height: 220px;">
+                        <canvas id="myPerformanceChart"></canvas>
+                    </div>
+                    <div id="reportCardContainer">Loading your grades...</div>
+                </div>
+
+                <div id="attendanceSection" style="margin-top: 20px; border-top: 2px solid #e0a914; padding-top: 15px; display: none;">
+                    <h4>Your Attendance Analytics</h4>
+                    <div id="attendanceStats" style="background: #fff; padding: 15px; border-radius: 6px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); color:#333;">
+                        Calculating statistics...
+                    </div>
+                    <div id="attendanceContainer">Loading logs...</div>
+                </div>
+
+                <div id="reviewSection" style="margin-top: 20px; border-top: 2px solid #9b5de5; padding-top: 15px; display: none;">
+                    <h4>Submit Class Evaluation</h4>
+                    <input type="text" id="reviewClassId" placeholder="Class ID number" required />
+                    <label style="display:block; margin-bottom:5px; font-weight:bold; color:#333;">Rating Score:</label>
+                    <select id="reviewRating" style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 4px; border: 1px solid #ccc; background: white; color: #333;">
+                        <option value="5">⭐⭐⭐⭐⭐ (Excellent Teaching)</option>
+                        <option value="4">⭐⭐⭐⭐ (Very Good)</option>
+                        <option value="3">⭐⭐⭐ (Average / Needs Improvement)</option>
+                        <option value="2">⭐⭐ (Below Expectations)</option>
+                        <option value="1">⭐ (Unsatisfactory Standard)</option>
+                    </select>
+                    <textarea id="reviewText" placeholder="Type your written feedback or complaints here..." rows="4" style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 4px; border: 1px solid #ccc; font-family: inherit; box-sizing: border-box;"></textarea>
+                    <button id="btnSaveReview" style="background-color: #9b5de5;">Submit Evaluation to Administration</button>
+                </div>
+
+                <div id="studentLmsSection" style="margin-top: 20px; border-top: 2px solid #f72585; padding-top: 15px; display: none;">
+                    <h4>Downloadable Class Materials</h4>
+                    <p style="color: #666; font-size: 14px;">Access study guides, lecture records, and project assignments posted by your subject teachers.</p>
+                    <div id="studentLmsContainer">Loading course materials...</div>
+                </div>
+            `;
+
+            let performanceChartInstance = null;
+
+            const loadStudentReportCard = async () => {
+                const reportContainer = document.getElementById('reportCardContainer');
+                
+                try {
+                    const { data: myGrades, error: gradeErr } = await client
+                        .from('assessments')
+                        .select(`week_number, test_score, max_score, classes ( class_name )`)
+                        .eq('student_id', userId)
+                        .order('week_number', { ascending: true });
+
+                    if (gradeErr) throw gradeErr;
+
+                    if (!myGrades || myGrades.length === 0) {
+                        reportContainer.innerHTML = "<p style='color:#666;'>No test assessments have been uploaded for you yet.</p>";
+                        return;
+                    }
+
+                    const chartLabels = []; 
+                    const chartScores = [];  
+
+                    reportContainer.innerHTML = ""; 
+                    
+                    myGrades.forEach(grade => {
+                        const className = grade.classes ? grade.classes.class_name : "Unknown Subject";
+                        
+                        chartLabels.push(`${className} (Wk ${grade.week_number})`);
+                        chartScores.push(grade.test_score);
+
+                        const row = document.createElement('div');
+                        row.style.cssText = "background: #fff; padding: 12px; margin-bottom: 8px; border-radius: 4px; border-left: 4px solid #e0a914; box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; color: #333; text-align: left;";
+                        row.innerHTML = `
+                            <div>
+                                <strong>Subject: ${className}</strong><br/>
+                                <small style="color: #666;">📝 Continuous Assessment: Week ${grade.week_number}</small>
+                            </div>
+                            <div style="font-size: 16px; font-weight: bold; color: ${grade.test_score >= 50 ? '#3ecf8e' : '#ff4a4a'}">
+                                ${grade.test_score} / ${grade.max_score}
+                            </div>
+                        `;
+                        reportContainer.appendChild(row);
+                    });
+
+                    const ctx = document.getElementById('myPerformanceChart').getContext('2d');
+                    
+                    if (performanceChartInstance) {
+                        performanceChartInstance.destroy();
+                    }
+
+                    performanceChartInstance = new Chart(ctx, {
+                        type: 'bar', 
+                        data: {
+                            labels: chartLabels, 
+                            datasets: [{
+                                label: 'Your Test Performance',
+                                data: chartScores, 
+                                backgroundColor: '#2483ec', 
+                                borderColor: '#1e6ec5',
+                                borderWidth: 1,
+                                borderRadius: 5
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: { beginAtZero: true, max: 100 }
+                            }
+                        }
+                    });
+
+                } catch (err) {
+                    reportContainer.innerHTML = "<p style='color:red;'>Error loading report card: " + err.message + "</p>";
+                }
+            };
+
+            const loadStudentSchedule = async () => {
+                const scheduleContainer = document.getElementById('myScheduleContainer');
+                try {
+                    const { data: myEnrollments, error: scheduleErr } = await client
+                        .from('enrollments')
+                        .select(`class_id, classes ( class_name, room_number )`)
+                        .eq('student_id', userId);
+
+                    if (scheduleErr) throw scheduleErr;
+
+                    if (!myEnrollments || myEnrollments.length === 0) {
+                        scheduleContainer.innerHTML = "<p style='color:#666;'>You haven't enrolled in any classes yet.</p>";
+                        return;
+                    }
+
+                    scheduleContainer.innerHTML = ""; 
+                    myEnrollments.forEach(item => {
+                        if (item.classes) {
+                            const row = document.createElement('div');
+                            row.style.cssText = "background: #fff; padding: 10px; margin-bottom: 8px; border-radius: 4px; border-left: 4px solid #2483ec; box-shadow: 0 2px 4px rgba(0,0,0,0.05); color: #333; text-align: left;";
+                            row.innerHTML = `<strong>${item.classes.class_name}</strong> — 📍 ${item.classes.room_number}`;
+                            scheduleContainer.appendChild(row);
+                        }
+                    });
+                } catch (err) {
+                    scheduleContainer.innerHTML = "<p style='color:red;'>Error loading schedule: " + err.message + "</p>";
+                }
+            };
+// ==========================================
+// ==========================================
+    // 4. THE SCRIPT LISTENERS (STUDENT SIDE)
+    // ==========================================
+    
+    // Initial hidden states for student views
+    document.getElementById('studentLmsSection').style.display = 'none';
+    document.getElementById('reviewSection').style.display = 'none';
+    document.getElementById('attendanceSection').style.display = 'none';
+ 
+    // Toggle: Show Schedule
+    document.getElementById('btnShowMySchedule').addEventListener('click', () => {
+        document.getElementById('classList').style.display = 'none'; 
+        document.getElementById('reportCardSection').style.display = 'none'; 
+        document.getElementById('attendanceSection').style.display = 'none';
+        document.getElementById('reviewSection').style.display = 'none';
+        document.getElementById('studentLmsSection').style.display = 'none';
+        document.getElementById('myScheduleSection').style.display = 'block'; 
+        loadStudentSchedule(); 
+    });
+ 
+    // Toggle: Show Report Card
+    document.getElementById('btnShowReportCard').addEventListener('click', () => {
+        document.getElementById('classList').style.display = 'none'; 
+        document.getElementById('myScheduleSection').style.display = 'none'; 
+        document.getElementById('attendanceSection').style.display = 'none';
+        document.getElementById('reviewSection').style.display = 'none';
+        document.getElementById('studentLmsSection').style.display = 'none';
+        document.getElementById('reportCardSection').style.display = 'block'; 
+        loadStudentReportCard(); 
+    });
+ 
+    // Fire up the institutional bulletin feed instantly for everyone upon login
+    loadGlobalNoticeBoard();
+ 
+    // --- 📊 FUNCTION: Fetch Attendance and Calculate Stats ---
+    const loadStudentAttendance = async () => {
+        const statsBox = document.getElementById('attendanceStats');
+        const logsContainer = document.getElementById('attendanceContainer');
+        
+        try {
+            // Fetch student logs, joining the classes table to get the subject name
+            const { data: records, error: attnErr } = await client
+                .from('attendance')
+                .select(`
+                    attendance_date,
+                    status,
+                    classes ( class_name )
+                `)
+                .eq('student_id', userId)
+                .order('attendance_date', { ascending: false }); // Show newest dates first
+ 
+            if (attnErr) throw attnErr;
+ 
+            if (!records || records.length === 0) {
+                statsBox.innerHTML = "<strong>Attendance Rate: 0%</strong>";
+                logsContainer.innerHTML = "<p style='color:#666;'>No daily attendance sessions have been logged for you yet.</p>";
+                return;
+            }
+ 
+            // Math Counters
+            let totalDays = records.length;
+            let presentCount = 0;
+            let lateCount = 0;
+            let absentCount = 0;
+ 
+            logsContainer.innerHTML = ""; // Clear loader text
+ 
+            records.forEach(log => {
+                if (log.status === 'Present') presentCount++;
+                if (log.status === 'Late') lateCount++;
+                if (log.status === 'Absent') absentCount++;
+ 
+                const className = log.classes ? log.classes.class_name : "Unknown Class";
+                
+                // Color formatting for statuses
+                let statusColor = '#3ecf8e'; // Green for Present
+                if (log.status === 'Late') statusColor = '#e0a914'; // Orange for Late
+                if (log.status === 'Absent') statusColor = '#ff4a4a'; // Red for Absent
+ 
+                // Build individual history row
+                const row = document.createElement('div');
+                row.style.cssText = "background: #fff; padding: 10px; margin-bottom: 6px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.05); color:#333;";
+                row.innerHTML = `
+                    <div>
+                        <strong>${className}</strong> <br/>
+                        <small style="color: #666;">📅 ${log.attendance_date}</small>
+                    </div>
+                    <span style="font-weight: bold; color: ${statusColor};">${log.status}</span>
+                `;
+                logsContainer.appendChild(row);
+            });
+ 
+            // Run the administrative metrics formula
+            const attendanceRate = Math.round(((presentCount + lateCount) / totalDays) * 100);
+ 
+            // Display stats breakdown inside statsBox
+            statsBox.innerHTML = `
+                <div style="font-size: 18px; font-weight: bold; margin-bottom: 5px; color: ${attendanceRate >= 75 ? '#3ecf8e' : '#ff4a4a'};">
+                    Live Attendance Rate: ${attendanceRate}%
+                </div>
+                <small style="color: #555;"> Total Sessions: <strong>${totalDays}</strong> | Present: <strong>${presentCount}</strong> | Late: <strong>${lateCount}</strong> | Absent: <strong>${absentCount}</strong></small>
+            `;
+ 
+        } catch (err) {
+            logsContainer.innerHTML = "<p style='color:red;'>Error loading attendance: " + err.message + "</p>";
+        }
+    };
+ 
+    // Toggle: View My Attendance Panel
+    document.getElementById('btnShowMyAttendance').addEventListener('click', () => {
+        document.getElementById('classList').style.display = 'none'; 
+        document.getElementById('myScheduleSection').style.display = 'none'; 
+        document.getElementById('reportCardSection').style.display = 'none'; 
+        document.getElementById('reviewSection').style.display = 'none';
+        document.getElementById('studentLmsSection').style.display = 'none';
+        document.getElementById('attendanceSection').style.display = 'block'; // Show attendance panel
+        loadStudentAttendance(); // Fire the metrics query!
+    });
+ 
+    // Toggle: Show Evaluation/Review Form
+    document.getElementById('btnShowReviewForm').addEventListener('click', () => {
+        document.getElementById('classList').style.display = 'none'; 
+        document.getElementById('myScheduleSection').style.display = 'none'; 
+        document.getElementById('reportCardSection').style.display = 'none'; 
+        document.getElementById('attendanceSection').style.display = 'none'; 
+        document.getElementById('studentLmsSection').style.display = 'none';
+        document.getElementById('reviewSection').style.display = 'block'; // Show review form!
+    });
+ 
+    // --- 📝 CODE: Submit the Review Record to Supabase ---
+    document.getElementById('btnSaveReview').addEventListener('click', async () => {
+        const classId = document.getElementById('reviewClassId').value.trim();
+        const ratingVal = document.getElementById('reviewRating').value;
+        const feedbackVal = document.getElementById('reviewText').value.trim();
+ 
+        if(!classId || !ratingVal) {
+            alert("Please provide a Class ID and choose a star rating score!");
+            return;
+        }
+ 
+        try {
+            // Push the review into our cloud table
+            const { error: reviewErr } = await client
+                .from('reviews')
+                .insert([
+                    {
+                        class_id: parseInt(classId),
+                        student_id: userId,
+                        rating: parseInt(ratingVal),
+                        feedback_text: feedbackVal
+                    }
+                ]);
+ 
+            if (reviewErr) {
+                // Catch unique constraint violations if they try to rate the same class twice
+                if (reviewErr.code === '23505') {
+                    throw new Error("You have already submitted an evaluation for this specific class!");
+                }
+                throw reviewErr;
+            }
+ 
+            alert("Thank you! Your evaluation has been submitted to the school administration.");
+            
+            // Clear the form fields upon success
+            document.getElementById('reviewClassId').value = '';
+            document.getElementById('reviewText').value = '';
+            document.getElementById('reviewSection').style.display = 'none';
+ 
+        } catch (err) {
+            alert("Failed to submit review: " + err.message);
+            console.error(err);
+        }
+    });
+ 
+    // Toggle: Browse and Enroll in Classes
+    document.getElementById('btnBrowseClasses').addEventListener('click', async () => {
+        document.getElementById('myScheduleSection').style.display = 'none'; 
+        document.getElementById('reportCardSection').style.display = 'none';
+        document.getElementById('attendanceSection').style.display = 'none';
+        document.getElementById('reviewSection').style.display = 'none';
+        document.getElementById('studentLmsSection').style.display = 'none';
+        document.getElementById('classList').style.display = 'block';
+        
+        const container = document.getElementById('classesContainer');
+        container.innerHTML = "Fetching latest classes...";
+ 
+        try {
+            const { data: schoolClasses, error: fetchError } = await client.from('classes').select('*');
+            if (fetchError) throw fetchError;
+ 
+            if (schoolClasses.length === 0) {
+                container.innerHTML = "<p>No classes available yet.</p>";
+                return;
+            }
+ 
+            container.innerHTML = ""; 
+            schoolClasses.forEach(course => {
+                const classRow = document.createElement('div');
+                classRow.style.cssText = "display: flex; justify-content: space-between; align-items: center; background: #f9f9f9; padding: 10px; margin-bottom: 8px; border-radius: 4px; border: 1px solid #ddd; color: #333;";
+                classRow.innerHTML = `
+                    <div>
+                        <strong>${course.class_name}</strong> <br/>
+                        <small style="color: #666;">📍 ${course.room_number}</small>
+                    </div>
+                    <button class="btnEnroll" data-id="${course.id}" style="background-color: #2483ec; width: auto; margin: 0; padding: 6px 12px; font-size: 13px;">Enroll</button>
+                `;
+                container.appendChild(classRow);
+            });
+ 
+            // Handle Enrollment Button clicks
+            const enrollButtons = document.querySelectorAll('.btnEnroll');
+            enrollButtons.forEach(button => {
+                button.addEventListener('click', async (e) => {
+                    const classId = e.target.getAttribute('data-id');
+                    try {
+                        const { error: enrollError } = await client.from('enrollments').insert([{ student_id: userId, class_id: classId }]);
+                        if (enrollError) throw enrollError;
+ 
+                        alert("Awesome! You have successfully enrolled.");
+                        e.target.innerText = "Enrolled ✅";
+                        e.target.style.backgroundColor = "#777";
+                        e.target.disabled = true;
+                    } catch (err) {
+                        alert("Enrollment failed: " + err.message);
+                    }
+                });
+            });
+        } catch (err) {
+            container.innerHTML = "<p style='color:red;'>Failed to load classes: " + err.message + "</p>";
+        }
+    });
+ 
+    // Toggle: Show the LMS Panel when clicked
+    document.getElementById('btnShowLmsViewer').addEventListener('click', () => {
+        document.getElementById('classList').style.display = 'none'; 
+        document.getElementById('myScheduleSection').style.display = 'none'; 
+        document.getElementById('reportCardSection').style.display = 'none'; 
+        document.getElementById('attendanceSection').style.display = 'none'; 
+        document.getElementById('reviewSection').style.display = 'none';
+        document.getElementById('studentLmsSection').style.display = 'block'; // Show LMS panel!
+        loadStudentLmsFeed();
+    });
+ 
+    // --- 📂 FUNCTION: Fetch resources from the database dynamically ---
+    const loadStudentLmsFeed = async () => {
+        const container = document.getElementById('studentLmsContainer');
+        container.innerHTML = "Opening school resource vaults...";
+ 
+        try {
+            // Pull the latest materials and join with the classes table to display matching subject tags
+            const { data: materials, error: lmsErr } = await client
+                .from('lms_materials')
+                .select(`
+                    id, title, material_type, file_url, uploaded_at,
+                    classes ( class_name )
+                `)
+                .order('uploaded_at', { ascending: false });
+ 
+            if (lmsErr) throw lmsErr;
+ 
+            if (!materials || materials.length === 0) {
+                container.innerHTML = "<p style='color:#666;'>No study materials or assignments have been uploaded yet.</p>";
+                return;
+            }
+ 
+            container.innerHTML = ""; // Clear loader text
+ 
+            materials.forEach(item => {
+                const subjectName = item.classes ? item.classes.class_name : "General Resource";
+                const typeBadgeColor = item.material_type === 'Note' ? '#2483ec' : '#f72585';
+                const typeIcon = item.material_type === 'Note' ? '📝' : '📂';
+ 
+                const card = document.createElement('div');
+                card.style.cssText = "background: #fff; padding: 15px; margin-bottom: 12px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; border-left: 4px solid " + typeBadgeColor + "; color: #333;";
+                
+                card.innerHTML = `
+                    <div>
+                        <span style="background: ${typeBadgeColor}; color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; text-transform: uppercase;">
+                            ${typeIcon} ${item.material_type}
+                        </span>
+                        <strong style="display: block; font-size: 15px; margin-top: 5px;">${item.title}</strong>
+                        <small style="color: #777;">Subject: ${subjectName} | Shared: ${new Date(item.uploaded_at).toLocaleDateString()}</small>
+                    </div>
+                    <div>
+                        <a href="${item.file_url}" target="_blank" download style="background: #3ecf8e; color: white; padding: 8px 12px; border-radius: 4px; text-decoration: none; font-size: 13px; font-weight: bold; display: inline-block;">📥 Download</a>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+ 
+        } catch (err) {
+            container.innerHTML = "<p style='color:red;'>Failed to load assets: " + err.message + "</p>";
+        }
+    };
+ 
+} // Finishes Student Side Conditional Block
+ 
+// =========================================================================
+// 👨‍👩‍👧‍👦 PART 1: THE NEW PARENT ROUTER WITHIN THE LOGIN FLOW
+// =========================================================================
+else if (userRole === 'Parent') {
+    document.getElementById('loginFormArea').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+    
+    const parentSection = document.getElementById('parentDashboardSection');
+    if (parentSection) parentSection.style.display = 'block';
+ 
+    if (document.getElementById('btnBrowseClasses')) document.getElementById('btnBrowseClasses').style.display = 'none';
+    if (document.getElementById('btnShowReviewForm')) document.getElementById('btnShowReviewForm').style.display = 'none';
+ 
+    const { data: relation, error: relErr } = await client
+        .from('parent_student_relations')
+        .select('student_id')
+        .eq('parent_id', userId)
+        .maybeSingle();
+ 
+    if (relErr) {
+        console.error("Error linking parent to student:", relErr.message);
+        alert("System error tracking student mapping details.");
+    } else if (relation && relation.student_id) {
+        const linkedChildId = relation.student_id;
+        loadChildDataForParent(linkedChildId);
+    } else {
+        alert("Welcome! Your parent account is active, but administration has not linked a student ID to your profile yet.");
+    }
+} // Finishes Parent Check Conditional Block
+
+    } catch (error) {
+        alert('Login Failed: ' + error.message);
+        console.error(error);
+    }
+}); // Finishes Login Event Listener Completely
+ 
+// =========================================================================
+// 👨‍👩‍👧‍👦 PART 2: THE PARENT DATA-FETCHING ENGINE (PLACED SAFELY OUTSIDE FLOW)
+// =========================================================================
+const loadChildDataForParent = async (childId) => {
+    const parentAttnContainer = document.getElementById('parentChildAttendanceContainer');
+    const parentStatsBox = document.getElementById('parentAttendanceStats');
+ 
+    if (!parentAttnContainer) return; 
+    parentAttnContainer.innerHTML = "Syncing academic tracking streams...";
+ 
+    try {
+        const { data: records, error: fetchErr } = await client
+            .from('attendance')
+            .select(`
+                attendance_date,
+                status,
+                classes ( class_name )
+            `)
+            .eq('student_id', childId)
+            .order('attendance_date', { ascending: false });
+ 
+        if (fetchErr) throw fetchErr;
+ 
+        if (!records || records.length === 0) {
+            if (parentStatsBox) parentStatsBox.innerHTML = "<strong>Attendance Rate: 0%</strong>";
+            parentAttnContainer.innerHTML = "<p style='color:#666;'>No attendance logs registered for your child this term.</p>";
+            return;
+        }
+ 
+        let totalSessions = records.length;
+        let present = 0, late = 0, absent = 0;
+        parentAttnContainer.innerHTML = ""; 
+ 
+        records.forEach(log => {
+            if (log.status === 'Present') present++;
+            if (log.status === 'Late') late++;
+            if (log.status === 'Absent') absent++;
+ 
+            const currentSubject = log.classes ? log.classes.class_name : "General Class";
+            let stateColor = '#3ecf8e'; 
+            if (log.status === 'Late') stateColor = '#e0a914';
+            if (log.status === 'Absent') stateColor = '#ff4a4a';
+ 
+            const logRow = document.createElement('div');
+            logRow.style.cssText = "background: #fdfdfd; padding: 10px; margin-bottom: 6px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; border-left: 3px solid " + stateColor + "; color:#333; font-size:14px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);";
+            logRow.innerHTML = `
+                <div>
+                    <strong>${currentSubject}</strong> <br/>
+                    <small style="color: #777;">📅 ${log.attendance_date}</small>
+                </div>
+                <span style="font-weight: bold; color: ${stateColor};">${log.status}</span>
+            `;
+            parentAttnContainer.appendChild(logRow);
+        });
+ 
+        const percentage = Math.round(((present + late) / totalSessions) * 100);
+ 
+        if (parentStatsBox) {
+            parentStatsBox.innerHTML = `
+                <div style="font-size: 16px; font-weight: bold; color: ${percentage >= 75 ? '#3ecf8e' : '#ff4a4a'};">
+                    Child's Live Attendance Rate: ${percentage}%
+                </div>
+                <small style="color: #666;">Total Checked: <strong>${totalSessions}</strong> | Present: <strong>${present}</strong> | Late: <strong>${late}</strong> | Absent: <strong>${absent}</strong></small>
+            `;
+        }
+ 
+    } catch (err) {
+        parentAttnContainer.innerHTML = "<p style='color:red;'>Failed to compile monitoring data: " + err.message + "</p>";
+    }
+};
+ 
+// ==========================================
+// 🚪 LOG OUT BUTTON LISTENER
+// ==========================================
+document.getElementById('btnLogOut').addEventListener('click', async () => {
+    try {
+        // 1. Sign out from Supabase Auth
+        const { error } = await client.auth.signOut();
+        if (error) throw error;
+ 
+        // 2. Clear out any dynamically injected user HTML
+        const portalContent = document.getElementById('portalContent');
+        if (portalContent) {
+            portalContent.innerHTML = ''; // Safely wipe dashboard interface content
+        }
+ 
+        // 3. Toggle main view panels cleanly
+        const dashboard = document.getElementById('dashboard');
+        const loginForm = document.getElementById('loginFormArea'); 
+        
+        if (dashboard) dashboard.style.display = 'none';
+        if (loginForm) loginForm.style.display = 'block';
+ 
+        // 4. Force a page reload to completely reset application state safely
+        window.location.reload();
+ 
+    } catch (error) {
+        alert("Logout Issue: " + error.message);
+    }
+});
+</script>
+</body>
+</html>
