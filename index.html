@@ -4,1228 +4,1009 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>School Management Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght=300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>    
+    
     <style>
-        body { font-family: Arial, sans-serif; margin: 40px; background: #f4f7f6; }
-        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 400px; }
-        input, select, button { width: 100%; padding: 10px; margin: 8px 0; box-sizing: border-box; }
-        button { background-color: #3ecf8e; color: white; border: none; font-weight: bold; cursor: pointer; }
-        button:hover { background-color: #34b27b; }
+        /* --- PREMIUM UI/UX TOKENS --- */
+        :root {
+            --primary: #2483ec;
+            --primary-hover: #1b6ec5;
+            --success: #3ecf8e;
+            --success-hover: #34b27b;
+            --warning: #e0a914;
+            --danger: #ff4a4a;
+            --danger-hover: #e03b3b;
+            --purple: #9b5de5;
+            --pink: #f72585;
+            --bg-main: #f4f7f9;
+            --bg-card: #ffffff;
+            --text-main: #2d3748;
+            --text-muted: #718096;
+            --border: #e2e8f0;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { background: var(--bg-main); color: var(--text-main); line-height: 1.6; display: flex; min-height: 100vh; justify-content: center; align-items: flex-start; padding: 20px; }
+        
+        /* Layout Structure */
+        .app-container { width: 100%; max-width: 1100px; margin: 0 auto; }
+        header { background: var(--bg-card); padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); margin-bottom: 25px; border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        header h1 { font-size: 22px; color: var(--primary); font-weight: 700; }
+        
+        /* Auth Setup */
+        .auth-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 25px; margin-top: 40px; }
+        
+        /* Unified Card Layouts */
+        .card { background: var(--bg-card); padding: 30px; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05), 0 4px 6px -2px rgba(0,0,0,0.02); border: 1px solid var(--border); transition: transform 0.2s; }
+        .card h3, .card h4 { margin-bottom: 18px; font-weight: 600; color: #1a202c; font-size: 18px; }
+        
+        /* Interactive Input Formats */
+        input, select, textarea { width: 100%; padding: 12px; margin: 10px 0 18px 0; border-radius: 8px; border: 1px solid var(--border); font-size: 14px; background: #f8fafc; transition: all 0.2s; color: var(--text-main); }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(36, 131, 236, 0.15); background: #fff; }
+        label { font-size: 13px; font-weight: 600; color: #4a5568; }
+        
+        /* Modern Button Styles */
+        button, .btn { display: inline-flex; align-items: center; justify-content: center; width: 100%; padding: 12px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; border: none; cursor: pointer; transition: all 0.2s; white-space: nowrap; text-decoration: none; }
+        button:active, .btn:active { transform: scale(0.98); }
+        
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-hover); }
+        .btn-success { background: var(--success); color: white; }
+        .btn-success:hover { background: var(--success-hover); }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-danger:hover { background: var(--danger-hover); }
+        
+        /* Dashboard Wrapper Styles */
+        .dashboard-layout { display: grid; grid-template-columns: 260px 1fr; gap: 25px; margin-top: 20px; align-items: start; }
+        @media (max-width: 768px) { .dashboard-layout { grid-template-columns: 1fr; } }
+        
+        .sidebar { background: var(--bg-card); border-radius: 12px; padding: 20px; border: 1px solid var(--border); box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
+        .sidebar-btn { background: transparent; color: var(--text-main); text-align: left; justify-content: flex-start; margin-bottom: 8px; padding: 10px 14px; border-radius: 6px; width: 100%; font-size: 14px; font-weight: 600; display: flex; align-items: center; cursor: pointer; border: none; }
+        .sidebar-btn:hover, .sidebar-btn.active { background: #edf2f7; color: var(--primary); }
+        
+        /* Notice Board Elements */
+        .notice-container { background: var(--bg-card); border-radius: 12px; padding: 25px; margin-bottom: 25px; border-left: 5px solid var(--primary); box-shadow: 0 4px 6px rgba(0,0,0,0.02); border-top: 1px solid var(--border); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+        .bulletin-item { padding: 15px; border-bottom: 1px solid var(--border); margin-bottom: 10px; }
+        .bulletin-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+        .badge { display: inline-block; padding: 3px 8px; font-size: 11px; font-weight: 700; border-radius: 4px; text-transform: uppercase; margin-bottom: 6px; color: white; }
+        
+        /* Sub-panel Blocks */
+        .workspace-panel { display: none; animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Roster Layouts */
+        .roster-row { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid var(--border); background: #f8fafc; margin-bottom: 8px; border-radius: 6px; }
+        .roster-row:last-child { margin-bottom: 0; }
     </style>
 </head>
-<body> <h2>School Management Portal</h2>
+<body>
+
+<div class="app-container">
+    <header>
+        <h1>🏫 Institutional Management Portal</h1>
+        <div id="headerAuthStatus"><span style="font-size:14px; color: var(--text-muted);">Secure Gateway Active</span></div>
+    </header>
     
-    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-        
+    <div id="loginFormArea" class="auth-grid">
         <div class="card">
             <h3>Create Account</h3>
-            <input type="text" id="fullName" placeholder="Full Name" required />
-            <input type="email" id="email" placeholder="Email Address" required />
-            <input type="password" id="password" placeholder="Password (min 6 chars)" required />
+            <label>Full Name</label>
+            <input type="text" id="fullName" placeholder="John Doe" required />
+            <label>Email Address</label>
+            <input type="email" id="email" placeholder="john@school.com" required />
+            <label>Password</label>
+            <input type="password" id="password" placeholder="••••••••" required />
+            <label>System Role Assignment</label>
             <select id="role">
-                <option value="student">Student</option>
-                <option value="teacher">Teacher</option>
-                <option value="parent">Parent</option> </select>
-            <button id="btnSignUp">Create Account</button>
+                <option value="Student">Student</option>
+                <option value="Teacher">Teacher</option>
+                <option value="Parent">Parent</option> 
+                <option value="Admin">Administrator</option>
+                <option value="Principal">Principal</option>
+            </select>
+            <button id="btnSignUp" class="btn-success">Create Account</button>
         </div>
  
-        <div class="card">
+        <div class="card" style="display:flex; flex-direction:column; justify-content:center;">
             <h3>User Login</h3>
-            <input type="email" id="loginEmail" placeholder="Email Address" required />
-            <input type="password" id="loginPassword" placeholder="Password" required />
-            <button id="btnLogin" style="background-color: #2483ec;">Log In</button>
+            <label>Email Address</label>
+            <input type="email" id="loginEmail" placeholder="your@email.com" required />
+            <label>Password</label>
+            <input type="password" id="loginPassword" placeholder="••••••••" required />
+            <button id="btnLogin" class="btn-primary" style="margin-top: 10px;">Log In to Dashboard</button>
         </div>
-        
     </div>
  
-    <div id="dashboardSection" style="display: none; max-width: 600px; margin-top: 20px;" class="card">
-        <button id="btnLogout" style="background-color: #ff4a4a; width: auto; float: right;">Log Out</button>
-        <h2 id="welcomeText">Welcome back!</h2>
-        <p id="roleText" style="font-weight: bold; color: #666; margin-bottom: 20px;"></p>
+    <div id="dashboard" style="display: none;">
         
-        <div id="globalNoticeBoard" style="margin-bottom: 25px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e3e6ea; display:none;">
-            <h3 style="margin-top: 0; color: #333; font-size: 18px; display: flex; align-items: center; gap: 8px;">📢 Institutional Bulletins & Notices</h3>
-            <div id="noticeFeedContainer">Loading bulletins...</div>
+        <div id="globalNoticeBoard" class="notice-container" style="display:none;">
+            <h3 style="margin-bottom:15px; font-size:18px; display:flex; align-items:center; gap:8px;">📢 Institutional Bulletins & Notices</h3>
+            <div id="noticeFeedContainer" style="font-size:14px; color:var(--text-main);">Loading bulletins...</div>
         </div>
- 
-        <div id="portalContent"></div>
+
+        <div class="dashboard-layout">
+            <div class="sidebar">
+                <div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid var(--border);">
+                    <h2 id="welcomeText" style="font-size: 16px; font-weight:700;">Welcome!</h2>
+                    <p id="roleText" style="font-size: 12px; color: var(--text-muted); font-weight:500; margin-top:2px;"></p>
+                </div>
+                <div id="sidebarMenuButtons"></div>
+                <button id="btnLogOut" class="btn-danger" style="margin-top: 20px; padding: 10px;">Log Out</button>
+            </div>
+
+            <div class="card" style="min-height: 400px;">
+                <div id="portalContent"></div>
+            </div>
+        </div>
     </div>
+</div>
  
-    <script>
-        // 1. Initialize Supabase Client
-        const SUPABASE_URL = "https://jrhvbtmrjqevdonehhdk.supabase.co";
-        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpyaHZidG1yanFldmRvbmVoaGRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyMDIzODUsImV4cCI6MjA5NDc3ODM4NX0.dycnNGLfCa8jCm234gBhRmImLRrVOCniYvQ_1qr8qZA";
- 
-        const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
- 
-        // --- GLOBAL FUNCTION: Fetch and Render School Notices ---
-        const loadGlobalNoticeBoard = async () => {
-            const noticeBoard = document.getElementById('globalNoticeBoard');
-            const feedContainer = document.getElementById('noticeFeedContainer');
-            
-            try {
-                const { data: notices, error: fetchErr } = await client
-                    .from('announcements')
-                    .select('*')
-                    .order('created_at', { ascending: false })
-                    .limit(5);
- 
-                if (fetchErr) throw fetchErr;
- 
-                if (!notices || notices.length === 0) {
-                    noticeBoard.style.display = 'none';
-                    return;
-                }
- 
-                noticeBoard.style.display = 'block';
-                feedContainer.innerHTML = ""; 
- 
-                notices.forEach(notice => {
-                    let badgeColor = "#2483ec"; 
-                    let backgroundColor = "#f4f7fc";
-                    let borderColor = "#cbd5e1";
-                    let priorityIcon = "ℹ️";
- 
-                    if (notice.priority_level === 'Warning') {
-                        badgeColor = "#e0a914"; 
-                        backgroundColor = "#fffbeb";
-                        borderColor = "#fef3c7";
-                        priorityIcon = "⚠️";
-                    } else if (notice.priority_level === 'Emergency') {
-                        badgeColor = "#ff4a4a"; 
-                        backgroundColor = "#fef2f2";
-                        borderColor = "#fee2e2";
-                        priorityIcon = "🚨";
-                    }
- 
-                    const alertBox = document.createElement('div');
-                    alertBox.style.cssText = `background: ${backgroundColor}; border: 1px solid ${borderColor}; border-left: 5px solid ${badgeColor}; padding: 12px 15px; margin-bottom: 10px; border-radius: 6px; color: #333; text-align: left;`;
-                    
-                    alertBox.innerHTML = `
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                            <span style="background: ${badgeColor}; color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; text-transform: uppercase;">
-                                ${priorityIcon} ${notice.priority_level} Notice
-                            </span>
-                            <small style="color: #777; font-size: 12px;">By: ${notice.author_name} | ${new Date(notice.created_at).toLocaleDateString()}</small>
-                        </div>
-                        <strong style="display: block; font-size: 15px; margin-bottom: 4px; color: #111;">${notice.title}</strong>
-                        <p style="margin: 0; font-size: 14px; line-height: 1.4; color: #444;">${notice.message}</p>
-                    `;
-                    feedContainer.appendChild(alertBox);
-                });
- 
-            } catch (err) {
-                console.error("Notice Board Error:", err.message);
-            }
-        };
+<script>
+// 1. Initialize Supabase Client
+const SUPABASE_URL = "https://jrhvbtmrjqevdonehhdk.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpyaHZidG1yanFldmRvbmVoaGRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyMDIzODUsImV4cCI6MjA5NDc3ODM4NX0.dycnNGLfCa8jCm234gBhRmImLRrVOCniYvQ_1qr8qZA";
 
-        // 2. Listen for the click on the "Create Account" button
-        document.getElementById('btnSignUp').addEventListener('click', async () => {
-            const fullName = document.getElementById('fullName').value;
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            const role = document.getElementById('role').value;
- 
-            if(!email || !password || !fullName) {
-                alert("Please fill in all fields!");
-                return;
-            }
- 
-            try {
-                const { data, error } = await client.auth.signUp({
-                    email: email,
-                    password: password,
-                });
- 
-                if (error) throw error;
- 
-                const { error: profileError } = await client
-                    .from('profiles')
-                    .insert([{ id: data.user.id, full_name: fullName, role: role }]);
- 
-                if (profileError) throw profileError;
- 
-                alert('Account created successfully! Check your email for a confirmation link.');
-                
-            } catch (error) {
-                alert('Error: ' + error.message);
-                console.error(error);
-            }
-        });
-// ==========================================
-// CLEAN, FULLY STRUCTURED LOGIN & ROLE ROUTER
-// ==========================================
-document.getElementById('btnLogin').addEventListener('click', async () => {
-    const email = document.getElementById('loginEmail').value;
-    const password = document.getElementById('loginPassword').value;
+const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    if(!email || !password) {
-        alert("Please enter both email and password!");
-        return;
-    }
+let userId = null;
+let userRole = null;
+let performanceChartInstance = null;
 
+// Global window reference for dynamically injected functions
+window.handleTeacherReply = async (parentUuid, msgId) => {
+    const replyTextArea = document.getElementById(`replyText_${msgId}`);
+    const replyText = replyTextArea ? replyTextArea.value.trim() : "";
+    
+    if(!replyText) return alert("Please type a response statement before transmitting.");
+    
     try {
-        // 1. Log the user in using Supabase Auth
-        const { data, error } = await client.auth.signInWithPassword({
-            email: email,
-            password: password,
+        const { error } = await client.from('messages').insert([{
+            sender_id: userId,
+            receiver_id: parentUuid, 
+            room_type: 'direct_message',
+            message_text: replyText
+        }]);
+        if(error) throw error;
+        alert("Reply statement successfully transmitted to the parent!");
+        if (replyTextArea) replyTextArea.value = "";
+        const targetBlock = document.getElementById(`replyBlock_${msgId}`);
+        if (targetBlock) targetBlock.style.display = "none";
+    } catch(err) { alert("Reply Transmission Failed: " + err.message); }
+};
+
+window.toggleReplyBlock = (msgId) => {
+    const targetBlock = document.getElementById(`replyBlock_${msgId}`);
+    if (targetBlock) {
+        targetBlock.style.display = targetBlock.style.display === "none" ? "block" : "none";
+    }
+};
+
+// ==========================================
+// 📢 LIVE NOTIFICATION BOARD ENGINE
+// ==========================================
+const loadGlobalNoticeBoard = async () => {
+    const noticeBoard = document.getElementById('globalNoticeBoard');
+    const container = document.getElementById('noticeFeedContainer');
+    if (!container || !noticeBoard) return;
+    try {
+        const { data: notices, error } = await client.from('bulletins').select('*').order('created_at', { ascending: false });
+        if (error) throw error;
+        if (!notices || notices.length === 0) {
+            container.innerHTML = "<p style='color:var(--text-muted);'>No system notices posted at this time.</p>";
+            noticeBoard.style.display = 'block';
+            return;
+        }
+        noticeBoard.style.display = 'block'; container.innerHTML = "";
+        notices.forEach(item => {
+            const row = document.createElement('div'); row.className = 'bulletin-item';
+            let badgeBg = 'var(--text-muted)';
+            if(item.badge_type === 'Urgent') badgeBg = 'var(--danger)';
+            if(item.badge_type === 'Academic') badgeBg = 'var(--primary)';
+            if(item.badge_type === 'Event') badgeBg = 'var(--purple)';
+            row.innerHTML = `
+                <span class="badge" style="background: ${badgeBg};">${item.badge_type}</span>
+                <strong style="display:block; font-size:15px; margin-bottom:4px; color:#1a202c;">${item.title}</strong>
+                <p style="color:#4a5568; font-size:14px; margin-bottom:5px;">${item.content}</p>
+                <small style="color:var(--text-muted); font-size:11px;">Posted: ${new Date(item.created_at).toLocaleDateString()}</small>
+            `;
+            container.appendChild(row);
         });
+    } catch (err) { container.innerHTML = "<p style='color:var(--danger);'>Notice board pipeline offline.</p>"; }
+};
+
+// ==========================================
+// 📂 STUDENT ENGINE DATA EXTRACTIONS
+// ==========================================
+const loadStudentLmsFeed = async () => {
+    const container = document.getElementById('studentLmsContainer'); if (!container) return;
+    container.innerHTML = "Opening school resource vaults...";
+    try {
+        const { data: materials, error } = await client.from('lms_materials').select('id, title, material_type, file_url, uploaded_at, classes(class_name)').order('uploaded_at', { ascending: false });
+        if (error) throw error;
+        if (!materials || materials.length === 0) { container.innerHTML = "<p style='color:var(--text-muted);'>No materials shared yet by teachers.</p>"; return; }
+        
+        container.innerHTML = materials.map(item => {
+            let badgeColor = 'var(--primary)';
+            if (item.material_type === 'Assignment') badgeColor = 'var(--pink)';
+            if (item.material_type === 'Handout') badgeColor = 'var(--purple)';
+            
+            return `
+                <div style="background:#f8fafc; padding:15px; margin-bottom:12px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; border:1px solid var(--border); border-left:4px solid ${badgeColor};">
+                    <div style="text-align:left;">
+                        <span class="badge" style="background:${badgeColor}">${item.material_type}</span>
+                        <strong style="display:block; font-size:15px; margin-top:3px;">${item.title}</strong>
+                        <small style="color:var(--text-muted)">Allocated Group: ${item.classes ? item.classes.class_name : 'General School'}</small>
+                    </div>
+                    <a href="${item.file_url}" target="_blank" class="btn btn-primary" style="width:auto; padding:8px 14px; font-size:13px;">🔗 View Link</a>
+                </div>
+            `;
+        }).join('');
+    } catch (err) { container.innerHTML = "<p style='color:var(--danger);'>"+err.message+"</p>"; }
+};
+
+const loadStudentAttendance = async (customStudentId = null) => {
+    const targetId = customStudentId || userId;
+    const statsBox = document.getElementById('attendanceStats'); const logsContainer = document.getElementById('attendanceContainer');
+    if (!logsContainer || !statsBox) return;
+    try {
+        const { data: records, error } = await client.from('attendance').select('attendance_date, status, classes(class_name)').eq('student_id', targetId).order('attendance_date', { ascending: false });
+        if (error) throw error;
+        if (!records || records.length === 0) { statsBox.innerHTML = "<strong>Attendance Rate: 0%</strong>"; logsContainer.innerHTML = "<p>No data recorded.</p>"; return; }
+        let total = records.length, present = 0, late = 0; logsContainer.innerHTML = "";
+        records.forEach(log => {
+            if (log.status === 'Present') present++; if (log.status === 'Late') late++;
+            let c = log.status==='Present'?'var(--success)':log.status==='Late'?'var(--warning)':'var(--danger)';
+            logsContainer.innerHTML += `<div style="display:flex; justify-content:space-between; background:#f8fafc; padding:10px; margin-bottom:6px; border-radius:6px; border:1px solid var(--border);"><div style="text-align:left;"><strong>${log.classes?log.classes.class_name:'Unknown'}</strong><br/><small style="color:var(--text-muted)">📅 ${log.attendance_date}</small></div><span style="font-weight:700; color:${c}">${log.status}</span></div>`;
+        });
+        let rate = Math.round(((present + late) / total) * 100);
+        statsBox.innerHTML = `<div style="font-size:16px; font-weight:700; color:${rate>=75?'var(--success)':'var(--danger)'}">Attendance Summary: ${rate}%</div><small style="color:var(--text-muted)">Total Classes: ${total} | Present: ${present} | Late: ${late}</small>`;
+    } catch (err) { logsContainer.innerHTML = err.message; }
+};
+
+const loadStudentSchedule = async () => {
+    const box = document.getElementById('myScheduleContainer'); if (!box) return;
+    try {
+        const { data, error } = await client.from('enrollments').select('classes(class_name, room_number)').eq('student_id', userId);
+        if (error) throw error;
+        box.innerHTML = data && data.length > 0 ? data.map(i => i.classes ? `<div style="background:#f8fafc; padding:12px; margin-bottom:8px; border-radius:6px; border-left:4px solid var(--primary); text-align:left; border-top:1px solid var(--border); border-right:1px solid var(--border); border-bottom:1px solid var(--border);"><strong>${i.classes.class_name}</strong> <span style="float:right; color:var(--text-muted);">📍 Room ${i.classes.room_number}</span></div>` : '').join('') : "<p style='color:var(--text-muted);'>No registered course allocations.</p>";
+    } catch (err) { box.innerHTML = err.message; }
+};
+
+const loadStudentReportCard = async (customStudentId = null) => {
+    const targetId = customStudentId || userId;
+    const container = document.getElementById('reportCardContainer'); if (!container) return;
+    try {
+        const { data: grades, error } = await client.from('assessments').select('week_number, test_score, max_score, classes(class_name)').eq('student_id', targetId).order('week_number', { ascending: true });
+        if (error) throw error;
+        if (!grades || grades.length === 0) { 
+            container.innerHTML = "<p>Grades pending compilation.</p>"; 
+            if (performanceChartInstance) performanceChartInstance.destroy();
+            return; 
+        }
+        const labels = [], scores = []; container.innerHTML = "";
+        grades.forEach(g => {
+            labels.push(`${g.classes?g.classes.class_name:'Class'} Wk ${g.week_number}`); scores.push(g.test_score);
+            container.innerHTML += `<div style="display:flex; justify-content:space-between; background:#f8fafc; padding:12px; margin-bottom:8px; border-radius:6px; border:1px solid var(--border); text-align:left;"><div><strong>${g.classes?g.classes.class_name:'Class'}</strong><br/><small style="color:var(--text-muted)">Assessment Week ${g.week_number}</small></div><strong style="color:var(--primary)">${g.test_score} / ${g.max_score}</strong></div>`;
+        });
+        if (performanceChartInstance) performanceChartInstance.destroy();
+        const ctx = document.getElementById('myPerformanceChart');
+        if (ctx) {
+            performanceChartInstance = new Chart(ctx.getContext('2d'), {
+                type: 'bar', data: { labels, datasets: [{ label: 'Performance Metrics', data: scores, backgroundColor: '#2483ec', borderRadius: 4 }] },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+    } catch (err) { container.innerHTML = err.message; }
+};
+
+// ==========================================
+// 💬 PARENT ENGINE HUB FUNCTIONS
+// ==========================================
+const loadParentIncomingDms = async () => {
+    const container = document.getElementById('parentIncomingDmsContainer');
+    if (!container) return;
+    try {
+        const { data: incomingMessages, error } = await client
+            .from('messages')
+            .select(`id, message_text, created_at, profiles!messages_sender_id_fkey(full_name)`)
+            .eq('receiver_id', userId)
+            .eq('room_type', 'direct_message')
+            .order('created_at', { ascending: false });
 
         if (error) throw error;
+        if (!incomingMessages || incomingMessages.length === 0) {
+            container.innerHTML = `<p style="color:var(--text-muted); font-size:13px; text-align:center; padding:15px;">No response notifications from teachers yet.</p>`;
+            return;
+        }
 
-        const userId = data.user.id;
+        container.innerHTML = incomingMessages.map(msg => `
+            <div style="background:#f0fdf4; padding:12px; margin-bottom:10px; border-radius:8px; border:1px solid #bbf7d0; border-left:4px solid var(--success); text-align:left;">
+                <strong style="color:#166534; display:block; font-size:13px;">🧑‍🏫 Instructor: ${msg.profiles ? msg.profiles.full_name : 'Faculty Teacher'}</strong>
+                <p style="color:var(--text-main); font-size:14px; margin-top:4px;">${msg.message_text}</p>
+                <small style="display:block; text-align:right; color:var(--text-muted); font-size:10px; margin-top:2px;">
+                    ${new Date(msg.created_at).toLocaleDateString()}
+                </small>
+            </div>
+        `).join('');
+    } catch(err) { container.innerHTML = "<p style='color:var(--danger);'>Failed to load responses.</p>"; }
+};
 
-        // 2. Fetch the user's profile information
-        const { data: profile, error: profileError } = await client
+const fetchTeachersDropdownList = async () => {
+    const selector = document.getElementById('msgTeacherSelect');
+    if (!selector) return;
+    try {
+        const { data: teachers, error } = await client
             .from('profiles')
-            .select('full_name, role')
-            .eq('id', userId)
-            .single();
+            .select('id, full_name')
+            .eq('role', 'Teacher')
+            .order('full_name', { ascending: true });
 
+        if (error) throw error;
+        if (!teachers || teachers.length === 0) {
+            selector.innerHTML = `<option value="">No instructors found on network</option>`;
+            return;
+        }
+        selector.innerHTML = `<option value="">-- Choose Instructor --</option>` + 
+            teachers.map(t => `<option value="${t.id}">🧑‍🏫 ${t.full_name}</option>`).join('');
+    } catch(err) { console.error("Failed to populate contact list:", err.message); }
+};
+
+const loadPTAForumStream = async () => {
+    const feed = document.getElementById('forumChatFeed'); if (!feed) return;
+    feed.innerHTML = "Syncing with PTA community wire...";
+    try {
+        const { data, error } = await client
+            .from('messages')
+            .select(`message_text, created_at, profiles!messages_sender_id_fkey(full_name)`)
+            .eq('room_type', 'parent_forum')
+            .order('created_at', { ascending: true });
+            
+        if(error) throw error;
+        if(!data || data.length === 0) {
+            feed.innerHTML = "<p style='color:var(--text-muted); font-size:13px; text-align:center; padding:20px;'>No community messages yet. Start the conversation below!</p>";
+            return;
+        }
+        
+        feed.innerHTML = data.map(m => `
+            <div style="margin-bottom:10px; padding:12px; background:#f8fafc; border:1px solid var(--border); border-radius:8px; font-size:13px; text-align:left;">
+                <strong style="color:var(--purple); display:block; margin-bottom:2px;">👥 ${m.profiles ? m.profiles.full_name : 'Parent'}</strong>
+                <span style="color:var(--text-main); font-size:14px;">${m.message_text}</span>
+                <small style="display:block; text-align:right; color:var(--text-muted); font-size:10px; margin-top:4px;">
+                    ${new Date(m.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                </small>
+            </div>
+        `).join('');
+        feed.scrollTop = feed.scrollHeight;
+    } catch(err) { feed.innerHTML = "<p style='color:var(--danger);'>Forum stream connection failure.</p>"; }
+};
+
+const loadLinkedChildMetrics = async () => {
+    const box = document.getElementById('childGradesContainer'); if (!box) return;
+    try {
+        const { data: links, error: linkErr } = await client.from('parent_student_relations').select('student_id').eq('parent_id', userId);
+        if (linkErr) throw linkErr;
+        if(!links || links.length === 0) { box.innerHTML = "<p>No dependent child link records found.</p>"; return; }
+        const { data: scores, error: scoreErr } = await client.from('assessments').select(`week_number, test_score, max_score, classes(class_name), profiles!assessments_student_id_fkey(full_name)`).in('student_id', links.map(l => l.student_id));
+        if (scoreErr) throw scoreErr;
+        box.innerHTML = scores && scores.length > 0 ? scores.map(s => `<div style="background:#f8fafc; padding:15px; border:1px solid var(--border); margin-bottom:10px; border-radius:8px; border-left:4px solid var(--primary);"><strong style="color:#1a202c;">Child: ${s.profiles?s.profiles.full_name:'Student'}</strong><br/><small style="color:var(--text-muted); display:block; margin:2px 0 5px 0;">Subject Allocation: ${s.classes?s.classes.class_name:'General'} (Week ${s.week_number})</small>Score Output: <span style="font-weight:700; color:var(--primary);">${s.test_score} / ${s.max_score}</span></div>`).join('') : "<p>Continuous evaluation metrics pending compilation records.</p>";
+    } catch(err) { box.innerHTML = err.message; }
+};
+
+// MULTI-WARD SYSTEM FOR PARENTS
+const loadParentWardsDropdown = async () => {
+    const selector = document.getElementById('parentWardSelect'); if(!selector) return;
+    try {
+        const { data: links, error } = await client.from('parent_student_relations').select(`student_id, profiles!parent_student_relations_student_id_fkey(full_name)`);
+        if (error) throw error;
+        if(!links || links.length === 0) {
+            selector.innerHTML = '<option value="">No linked student accounts found</option>';
+            return;
+        }
+        selector.innerHTML = links.map(l => `<option value="${l.student_id}">🧒 ${l.profiles ? l.profiles.full_name : 'Assigned Ward'}</option>`).join('');
+        // Trigger initial data load
+        loadStudentReportCard(selector.value);
+        loadStudentAttendance(selector.value);
+    } catch(err) { console.error(err); }
+};
+
+// ==========================================
+// 🧑‍🏫 TEACHER WORKSPACE HANDLERS
+// ==========================================
+const populateTeacherClassDropdowns = async (dropdownId) => {
+    const dropdown = document.getElementById(dropdownId); if (!dropdown) return;
+    try {
+        const { data: schoolClasses, error } = await client.from('classes').select('id, class_name');
+        if (error) throw error;
+        dropdown.innerHTML = `<option value="">-- Choose Class Group --</option>` + 
+            schoolClasses.map(c => `<option value="${c.id}">${c.class_name}</option>`).join('');
+    } catch(err) { console.error("Dropdown compilation error:", err.message); }
+};
+
+const loadRosterForAttendance = async (classId) => {
+    const container = document.getElementById('attnRosterContainer'); if(!container) return;
+    if(!classId) { container.innerHTML = "<p style='color:var(--text-muted);'>Select a class above to render student logs.</p>"; return; }
+    container.innerHTML = "Gathering classroom rosters...";
+    try {
+        const { data: students, error } = await client.from('class_rosters').select('*').eq('class_id', classId);
+        if (error) throw error;
+        if(!students || students.length === 0) { container.innerHTML = "<p>No registered students found enrolled in this class group.</p>"; return; }
+        
+        container.innerHTML = students.map(s => `
+            <div class="roster-row" data-student="${s.student_id}">
+                <span style="font-weight:500;">👤 ${s.student_name}</span>
+                <select class="attn-status-selector" style="width:auto; margin:0; padding:6px 12px;">
+                    <option value="Present">Present</option>
+                    <option value="Late">Late</option>
+                    <option value="Absent">Absent</option>
+                </select>
+            </div>
+        `).join('');
+    } catch(err) { container.innerHTML = "Roster error: " + err.message; }
+};
+
+const loadRosterForGrades = async (classId) => {
+    const container = document.getElementById('gradesRosterContainer'); if(!container) return;
+    if(!classId) { container.innerHTML = "<p style='color:var(--text-muted);'>Select a class above to open grades sheets.</p>"; return; }
+    container.innerHTML = "Compiling spreadsheet cells...";
+    try {
+        const { data: students, error } = await client.from('class_rosters').select('*').eq('class_id', classId);
+        if (error) throw error;
+        if(!students || students.length === 0) { container.innerHTML = "<p>No enrolled students matched this class parameters.</p>"; return; }
+        
+        container.innerHTML = students.map(s => `
+            <div class="roster-row" data-student="${s.student_id}" style="gap:15px; flex-wrap:wrap;">
+                <span style="font-weight:500; min-width:150px; flex-grow:1;">👤 ${s.student_name}</span>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <input type="number" class="student-score-input" placeholder="Score" max="100" min="0" style="width:80px; margin:0; padding:6px;" required />
+                    <span style="font-weight:600; color:var(--text-muted);">/ 100</span>
+                </div>
+            </div>
+        `).join('');
+    } catch(err) { container.innerHTML = "Grade spreadsheet error: " + err.message; }
+};
+
+// ==========================================
+// 🏛️ ADMIN / PRINCIPAL HANDLERS (NEW MODULE)
+// ==========================================
+const loadAdminLiveGradeFeed = async () => {
+    const container = document.getElementById('adminLiveGradeFeed'); if(!container) return;
+    try {
+        const { data, error } = await client.from('assessments').select('test_score, max_score, created_at, profiles!assessments_student_id_fkey(full_name), classes(class_name)').order('created_at', {ascending: false}).limit(5);
+        if(error) throw error;
+        if(!data || data.length === 0) { container.innerHTML = "<p style='color:var(--text-muted); font-size:13px;'>No recent grades recorded on network.</p>"; return; }
+        container.innerHTML = data.map(g => `<div style="padding:8px; border-bottom:1px solid var(--border); font-size:13px;">⚡ <strong>${g.profiles ? g.profiles.full_name : 'Student'}</strong> scored <strong>${g.test_score}/${g.max_score}</strong> in <em>${g.classes ? g.classes.class_name : 'Class'}</em></div>`).join('');
+    } catch(err) { container.innerHTML = err.message; }
+};
+
+const loadAdminStandings = async () => {
+    const container = document.getElementById('adminStandingsContainer'); if(!container) return;
+    try {
+        const { data, error } = await client.from('assessments').select('student_id, test_score, profiles!assessments_student_id_fkey(full_name)');
+        if(error) throw error;
+        if(!data || data.length === 0) { container.innerHTML = "<p style='font-size:13px; color:var(--text-muted);'>No performance data available.</p>"; return; }
+        
+        // Group & Average
+        const studentMap = {};
+        data.forEach(g => {
+            if(!g.student_id) return;
+            const name = g.profiles ? g.profiles.full_name : 'Unknown';
+            if(!studentMap[g.student_id]) studentMap[g.student_id] = { name, scores: [] };
+            studentMap[g.student_id].scores.push(g.test_score);
+        });
+
+        let html = '<div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">';
+        let advanced = '', intervention = '';
+        
+        Object.keys(studentMap).forEach(id => {
+            const student = studentMap[id];
+            const avg = student.scores.reduce((a,b)=>a+b, 0) / student.scores.length;
+            if(avg >= 75) {
+                advanced += `<div style="padding:6px; background:#e6fffa; color:#006d5b; border-radius:4px; margin-bottom:5px; font-size:13px;">🏆 ${student.name} (${Math.round(avg)}%)</div>`;
+            } else if (avg < 50) {
+                intervention += `<div style="padding:6px; background:#fff5f5; color:#9b2c2c; border-radius:4px; margin-bottom:5px; font-size:13px;">⚠️ ${student.name} (${Math.round(avg)}%)</div>`;
+            }
+        });
+        
+        html += `<div><h5>🌟 Excellence Tier (&ge;75%)</h5>${advanced || '<p style="font-size:12px; color:var(--text-muted);">None</p>'}</div>`;
+        html += `<div><h5>🚨 Critical Intervention Tier (&lt;50%)</h5>${intervention || '<p style="font-size:12px; color:var(--text-muted);">None</p>'}</div>`;
+        html += '</div>';
+        container.innerHTML = html;
+    } catch(err) { container.innerHTML = err.message; }
+};
+
+const loadAdminInterventions = async () => {
+    const container = document.getElementById('adminInterventionsList'); if(!container) return;
+    try {
+        const { data, error } = await client.from('interventions').select('id, subject_topic, status, profiles!interventions_student_id_fkey(full_name)');
+        if(error) throw error;
+        if(!data || data.length === 0) { container.innerHTML = "<p style='font-size:13px; color:var(--text-muted);'>No current remedial interventions registered.</p>"; return; }
+        container.innerHTML = data.map(i => `<div style="padding:8px; background:#f8fafc; border:1px solid var(--border); margin-bottom:6px; border-radius:6px; font-size:13px; display:flex; justify-content:between;"><span>🎯 <strong>${i.profiles?i.profiles.full_name:'Student'}</strong> - ${i.subject_topic}</span> <span style="margin-left:auto; font-weight:600; color:var(--purple);">${i.status || 'Active'}</span></div>`).join('');
+    } catch(err) { container.innerHTML = err.message; }
+};
+
+const populateAdminDropdowns = async () => {
+    try {
+        const { data: std } = await client.from('profiles').select('id, full_name').eq('role', 'Student');
+        if(std && document.getElementById('interventionStudentSelect')) {
+            document.getElementById('interventionStudentSelect').innerHTML = std.map(s => `<option value="${s.id}">${s.full_name}</option>`).join('');
+        }
+        const { data: cls } = await client.from('classes').select('id, class_name');
+        if(cls && document.getElementById('adminInterventionClassSelect')) {
+            document.getElementById('adminInterventionClassSelect').innerHTML = cls.map(c => `<option value="${c.id}">${c.class_name}</option>`).join('');
+        }
+        const { data: tch } = await client.from('profiles').select('id, full_name').eq('role', 'Teacher');
+        if(tch && document.getElementById('adminClassTeacherSelect')) {
+            document.getElementById('adminClassTeacherSelect').innerHTML = `<option value="">-- Leave Unassigned --</option>` + tch.map(t => `<option value="${t.id}">${t.full_name}</option>`).join('');
+        }
+    } catch(err) { console.error(err); }
+};
+
+// Tab controller engine 
+const switchWorkspacePanel = (targetId, triggerBtn) => {
+    document.querySelectorAll('.workspace-panel').forEach(p => p.style.display = 'none');
+    document.querySelectorAll('.sidebar-btn').forEach(b => b.classList.remove('active'));
+    const targetPanel = document.getElementById(targetId);
+    if (targetPanel) targetPanel.style.display = 'block';
+    if(triggerBtn) triggerBtn.classList.add('active');
+};
+
+// ==========================================
+// 🔐 AUTH FLOW EXECUTION LISTENERS
+// ==========================================
+document.getElementById('btnSignUp').addEventListener('click', async () => {
+    const fullName = document.getElementById('fullName').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const role = document.getElementById('role').value;
+    if (!fullName || !email || !password) return alert("Fill rows!");
+    try {
+        const { data, error } = await client.auth.signUp({ email, password });
+        if (error) throw error;
+        if (data.user) {
+            await client.from('profiles').insert([{ id: data.user.id, full_name: fullName, role: role }]);
+            alert("Account created successfully!");
+        }
+    } catch (err) { alert(err.message); }
+});
+
+document.getElementById('btnLogin').addEventListener('click', async () => {
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    if (!email || !password) return alert("Key in credentials.");
+
+    try {
+        const { data: authData, error: authError } = await client.auth.signInWithPassword({ email, password });
+        if (authError) throw authError;
+
+        userId = authData.user.id;
+        const { data: profile, error: profileError } = await client.from('profiles').select('full_name, role').eq('id', userId).maybeSingle();
         if (profileError) throw profileError;
 
-        // 🏫 UNIVERSAL VISIBILITY FIX:
-        const dashboardEl = document.getElementById('dashboardSection') || document.getElementById('dashboard');
-        
-        if (dashboardEl) dashboardEl.style.display = 'block';
+        userRole = profile ? profile.role : "None Assigned";
+        document.getElementById('welcomeText').innerText = profile ? profile.full_name : "User Profile";
+        document.getElementById('roleText').innerText = `Role: ${userRole}`;
 
-        // LAUNCH THE BULLETIN BOARD:
-        setTimeout(() => {
-            if (typeof loadGlobalNoticeBoard === 'function') {
-                loadGlobalNoticeBoard();
-            }
-        }, 100);
+        document.getElementById('loginFormArea').style.display = 'none';
+        document.getElementById('dashboard').style.display = 'block';
 
-        // RENDER THE DASHBOARD CUSTOM MENUS BASED ON ROLE:
-        document.getElementById('welcomeText').innerText = `Welcome back, ${profile.full_name}!`;
-        
-        if (profile.role === 'teacher') {
-            // Teacher Menu Dashboard Persona
-            document.getElementById('roleText').innerText = "👨‍🏫 Role: Teacher Account";
-            
-            document.getElementById('portalContent').innerHTML = `
-                <p><strong>Teacher Menu:</strong></p>
-                <button id="btnShowClassForm" style="background-color: #3ecf8e; width:auto; margin-right:10px;">+ Create a New Class</button>
-                <button id="btnShowGradeForm" style="background-color: #2483ec; width:auto; margin-right:10px;">+ Record Weekly Test Grade</button>
-                <button id="btnShowAttendanceForm" style="background-color: #e0a914; width:auto; margin-right:10px;">📅 Log Daily Attendance</button>
-                <button id="btnShowLmsForm" style="background-color: #f72585; width:auto;">📚 Upload Lesson Materials</button>
+        const sidebarMenu = document.getElementById('sidebarMenuButtons');
+        const portalContent = document.getElementById('portalContent');
 
-                <div id="classForm" style="display: none; margin-top: 20px; border-top: 1px solid #ccc; padding-top: 15px;">
-                    <h4>Add New Class Details</h4>
-                    <input type="text" id="className" placeholder="e.g. Algebra 101" required />
-                    <input type="text" id="roomNumber" placeholder="e.g. Room 304" required />
-                    <button id="btnSaveClass" style="background-color: #3ecf8e;">Save Class to Portal</button>
-                </div>
+        loadGlobalNoticeBoard();
 
-                <div id="gradeForm" style="display: none; margin-top: 20px; border-top: 1px solid #2483ec; padding-top: 15px;">
-                    <h4>Record Student Test Grade</h4>
-                    <input type="text" id="gradeClassId" placeholder="Paste Class ID here" required />
-                    <input type="text" id="gradeStudentId" placeholder="Paste Student ID here" required />
-                    <input type="number" id="gradeWeek" placeholder="Week Number (e.g. 1)" min="1" required />
-                    <input type="number" id="gradeScore" placeholder="Score (e.g. 85)" min="0" max="100" required />
-                    <button id="btnSaveGrade" style="background-color: #2483ec;">Submit Grade to Database</button>
-                </div>
-
-                <div id="attendanceForm" style="display: none; margin-top: 20px; border-top: 1px solid #e0a914; padding-top: 15px;">
-                    <h4>Log Daily Student Attendance</h4>
-                    <input type="text" id="attnClassId" placeholder="Class ID number" required />
-                    <input type="text" id="attnStudentId" placeholder="Paste Student ID here" required />
-                    <input type="date" id="attnDate" required />
-                    <select id="attnStatus" style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 4px; border: 1px solid #ccc; background: white; color: #333;">
-                        <option value="Present">Present ✅</option>
-                        <option value="Late">Late ⏰</option>
-                        <option value="Absent">Absent ❌</option>
-                    </select>
-                    <button id="btnSaveAttendance" style="background-color: #e0a914;">Submit Attendance Record</button>
-                </div>
-
-                <div id="lmsForm" style="display: none; margin-top: 20px; border-top: 1px solid #f72585; padding-top: 15px;">
-                    <h4>Upload Course Notes / Assignments</h4>
-                    <input type="text" id="lmsClassId" placeholder="Class ID number" required />
-                    <input type="text" id="lmsTitle" placeholder="e.g. Chapter 1 Notes" required />
-                    <label style="display:block; margin-bottom:5px; font-weight:bold; color:#333;">Material Type:</label>
-                    <select id="lmsType" style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 4px; border: 1px solid #ccc; background: white; color: #333;">
-                        <option value="Note">Lecture Note 📝</option>
-                        <option value="Assignment">Assignment Task 📂</option>
-                    </select>
-                    <label style="display:block; margin-bottom:5px; font-weight:bold; color:#333;">Select Document File:</label>
-                    <input type="file" id="lmsFile" style="margin-bottom: 15px;" required />
-                    <button id="btnSaveLms" style="background-color: #f72585;">Upload File to Cloud Vault</button>
-                </div>
-
-                <div style="margin-top: 25px; border-top: 2px solid #3ecf8e; padding-top: 15px;">
-                    <h4>Your Active Classes</h4>
-                    <div id="teacherClassesContainer">Loading your schedule...</div>
+        // ==========================================
+        // 1. STUDENT GATEWAY
+        // ==========================================
+        if (userRole === 'Student') {
+            sidebarMenu.innerHTML = `
+                <button class="sidebar-btn" id="navLms">📚 Course Notes</button>
+                <button class="sidebar-btn" id="navGrades">📊 Report Card</button>
+                <button class="sidebar-btn" id="navAttn">📈 Attendance</button>
+                <button class="sidebar-btn" id="navSchedule">📅 My Schedule</button>
+                <button class="sidebar-btn" id="navReview">⭐ Class Review</button>
+            `;
+            portalContent.innerHTML = `
+                <div id="panelLms" class="workspace-panel"><h4>Downloadable Course Materials</h4><div id="studentLmsContainer" style="margin-top:15px;"></div></div>
+                <div id="panelGrades" class="workspace-panel"><h4>Weekly Evaluation Analytics</h4><div style="height:200px; margin-bottom:20px;"><canvas id="myPerformanceChart"></canvas></div><div id="reportCardContainer"></div></div>
+                <div id="panelAttn" class="workspace-panel"><h4>Your Attendance Log</h4><div id="attendanceStats" style="padding:12px; background:#f8fafc; border-radius:8px; margin-bottom:15px; border:1px solid var(--border);"></div><div id="attendanceContainer"></div></div>
+                <div id="panelSchedule" class="workspace-panel"><h4>Allocated Timetable Blocks</h4><div id="myScheduleContainer" style="margin-top:15px;"></div></div>
+                <div id="panelReview" class="workspace-panel">
+                    <h4>Submit Institutional Evaluation</h4>
+                    <label>Course Reference ID</label><input type="text" id="reviewClassId" placeholder="e.g. 1" />
+                    <label>Rating Parameters</label><select id="reviewRating"><option value="5">⭐⭐⭐⭐⭐ Excellent</option><option value="4">⭐⭐⭐⭐ Great</option><option value="3">⭐⭐⭐ Neutral</option></select>
+                    <label>Structural Comments</label><textarea id="reviewText" rows="3" placeholder="Drop review insights..."></textarea>
+                    <button id="btnSaveReview" class="btn-primary">Submit Evaluation</button>
                 </div>
             `;
+            document.getElementById('navLms').addEventListener('click', (e) => { switchWorkspacePanel('panelLms', e.target); loadStudentLmsFeed(); });
+            document.getElementById('navGrades').addEventListener('click', (e) => { switchWorkspacePanel('panelGrades', e.target); loadStudentReportCard(); });
+            document.getElementById('navAttn').addEventListener('click', (e) => { switchWorkspacePanel('panelAttn', e.target); loadStudentAttendance(); });
+            document.getElementById('navSchedule').addEventListener('click', (e) => { switchWorkspacePanel('panelSchedule', e.target); loadStudentSchedule(); });
+            document.getElementById('navReview').addEventListener('click', (e) => { switchWorkspacePanel('panelReview', e.target); });
+            document.getElementById('navLms').click();
 
-            // Form Visibility Controllers
-            document.getElementById('btnShowClassForm').addEventListener('click', () => {
-                document.getElementById('lmsForm').style.display = 'none'; 
-                document.getElementById('gradeForm').style.display = 'none'; 
-                document.getElementById('attendanceForm').style.display = 'none'; 
-                document.getElementById('classForm').style.display = 'block'; 
-            });
+        // ==========================================
+        // 2. PARENT GATEWAY
+        // ==========================================
+        } else if (userRole === 'Parent') {
+            sidebarMenu.innerHTML = `
+                <button class="sidebar-btn" id="navChild">📊 Student Performance</button>
+                <button class="sidebar-btn" id="navComm">💬 Communication Hub</button>
+            `;
+            portalContent.innerHTML = `
+                <div style="margin-bottom: 20px; background:#edf2f7; padding:15px; border-radius:8px; border:1px solid var(--border);">
+                    <label style="margin-bottom:5px; display:block; font-weight:600;">Select Ward Profile Context</label>
+                    <select id="parentWardSelect" style="margin:0; background:#fff; font-weight:600;"></select>
+                </div>
 
-            document.getElementById('btnShowGradeForm').addEventListener('click', () => {
-                document.getElementById('lmsForm').style.display = 'none'; 
-                document.getElementById('classForm').style.display = 'none'; 
-                document.getElementById('attendanceForm').style.display = 'none'; 
-                document.getElementById('gradeForm').style.display = 'block'; 
-            });
-
-            document.getElementById('btnShowAttendanceForm').addEventListener('click', () => {
-                document.getElementById('lmsForm').style.display = 'none'; 
-                document.getElementById('classForm').style.display = 'none'; 
-                document.getElementById('gradeForm').style.display = 'none'; 
-                document.getElementById('attendanceForm').style.display = 'block'; 
-                document.getElementById('attnDate').valueAsDate = new Date();
-            });
-
-            document.getElementById('btnShowLmsForm').addEventListener('click', () => {
-                document.getElementById('classForm').style.display = 'none'; 
-                document.getElementById('gradeForm').style.display = 'none'; 
-                document.getElementById('attendanceForm').style.display = 'none'; 
-                document.getElementById('lmsForm').style.display = 'block'; 
-            });
-
-            // Save Class Logic
-            document.getElementById('btnSaveClass').addEventListener('click', async () => {
-                const name = document.getElementById('className').value.trim();
-                const room = document.getElementById('roomNumber').value.trim();
-                if (!name || !room) return alert("Fill all fields");
-                try {
-                    const { error } = await client.from('classes').insert([{ class_name: name, room_number: room, teacher_id: userId }]);
-                    if (error) throw error;
-                    alert("Class Saved!");
-                    document.getElementById('className').value = '';
-                    document.getElementById('roomNumber').value = '';
-                    loadTeacherClasses();
-                } catch (err) { alert(err.message); }
-            });
-
-            // Save Grade Logic
-            document.getElementById('btnSaveGrade').addEventListener('click', async () => {
-                const cid = document.getElementById('gradeClassId').value.trim();
-                const sid = document.getElementById('gradeStudentId').value.trim();
-                const wk = document.getElementById('gradeWeek').value;
-                const sc = document.getElementById('gradeScore').value;
-                if(!cid || !sid || !wk || !sc) return alert("Fill all fields");
-                try {
-                    const { error } = await client.from('grades').insert([{ class_id: parseInt(cid), student_id: sid, week_number: parseInt(wk), score: parseFloat(sc) }]);
-                    if (error) throw error;
-                    alert("Grade Recorded!");
-                    document.getElementById('gradeStudentId').value = '';
-                    document.getElementById('gradeScore').value = '';
-                } catch (err) { alert(err.message); }
-            });
-
-            // Save Attendance Logic
-            document.getElementById('btnSaveAttendance').addEventListener('click', async () => {
-                const classId = document.getElementById('attnClassId').value.trim();
-                const studentId = document.getElementById('attnStudentId').value.trim();
-                const dateVal = document.getElementById('attnDate').value;
-                const statusVal = document.getElementById('attnStatus').value;
-                if(!classId || !studentId || !dateVal) return alert("Fill all fields");
-                try {
-                    const { error: attnErr } = await client.from('attendance').insert([{ class_id: parseInt(classId), student_id: studentId, attendance_date: dateVal, status: statusVal }]);
-                    if (attnErr) {
-                        if (attnErr.code === '23505') throw new Error("Attendance already logged for this student today!");
-                        throw attnErr;
-                    }
-                    alert(`Marked as ${statusVal}`);
-                    document.getElementById('attnStudentId').value = '';
-                } catch (err) { alert(err.message); }
-            });
-
-            // Save LMS Upload Logic
-            document.getElementById('btnSaveLms').addEventListener('click', async () => {
-                const classId = document.getElementById('lmsClassId').value.trim();
-                const titleVal = document.getElementById('lmsTitle').value.trim();
-                const typeVal = document.getElementById('lmsType').value;
-                const fileInput = document.getElementById('lmsFile');
-                if (!classId || !titleVal || fileInput.files.length === 0) return alert("Fill all fields");
-                const file = fileInput.files[0];
-                const uniqueFileName = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
-                try {
-                    const btn = document.getElementById('btnSaveLms');
-                    btn.innerText = "Uploading..."; btn.disabled = true;
-                    const { error: storageErr } = await client.storage.from('school-resources').upload(uniqueFileName, file);
-                    if (storageErr) throw storageErr;
-                    const { data: urlData } = client.storage.from('school-resources').getPublicUrl(uniqueFileName);
-                    const { error: dbErr } = await client.from('lms_materials').insert([{ class_id: parseInt(classId), title: titleVal, material_type: typeVal, file_url: urlData.publicUrl }]);
-                    if (dbErr) throw dbErr;
-                    alert("Uploaded Successfully!");
-                    document.getElementById('lmsTitle').value = ''; fileInput.value = '';
-                    document.getElementById('lmsForm').style.display = 'none';
-                } catch (err) { alert(err.message); }
-                finally {
-                    const btn = document.getElementById('btnSaveLms');
-                    btn.innerText = "Upload File to Cloud Vault"; btn.disabled = false;
-                }
-            });
-
-            const loadTeacherClasses = async () => {
-                try {
-                    const { data, error } = await client.from('classes').select('*').eq('teacher_id', userId);
-                    if (error) throw error;
-                    const container = document.getElementById('teacherClassesContainer');
-                    if(!data || data.length === 0) {
-                        container.innerHTML = "<p>No active classes scheduled.</p>";
-                        return;
-                    }
-                    container.innerHTML = "";
-                    data.forEach(c => {
-                        const item = document.createElement('div');
-                        item.style.cssText = "background:#f4f4f4; padding:10px; margin-bottom:5px; border-radius:4px; color:#333;";
-                        item.innerHTML = `🏫 <strong>${c.class_name}</strong> (ID: ${c.id}) - 📍 ${c.room_number}`;
-                        container.appendChild(item);
-                    });
-                } catch (err) { console.error(err); }
-            };
-            loadTeacherClasses();
-
-        } else if (profile.role === 'principal' || profile.role === 'admin') {
-            // EXECUTIVE PRINCIPAL PORTAL
-            document.getElementById('roleText').innerText = "👑 Role: School Principal / Admin";
-            
-            document.getElementById('portalContent').innerHTML = `
-                <p><strong>Administrative Command Center:</strong></p>
-                <button id="btnRefreshReviews" style="background-color: #3ecf8e; width:auto; margin-bottom: 20px; margin-right: 10px;">🔄 Refresh Evaluation Feed</button>
-                <button id="btnToggleNoticeForm" style="background-color: #2483ec; width:auto; margin-bottom: 20px;">📢 Broadcast New Announcement</button>
-
-                <div id="noticeComposerForm" style="display: none; margin-bottom: 25px; padding: 15px; border: 1px solid #2483ec; border-radius: 6px; background: #fff;">
-                    <h4>Compose Institutional Bulletin</h4>
-                    <input type="text" id="noticeTitle" placeholder="Notice Heading (e.g. End of Term Seminar Dates)" required />
-                    <textarea id="noticeMessage" placeholder="Type your formal statement or description here..." rows="4" style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 4px; border: 1px solid #ccc; font-family: inherit; box-sizing: border-box;" required></textarea>
+                <div id="panelChild" class="workspace-panel">
+                    <h4>Linked Progress Tracking Analytics</h4>
+                    <div style="height:200px; margin-bottom:20px; margin-top:10px;"><canvas id="myPerformanceChart"></canvas></div>
+                    <div id="attendanceStats" style="padding:12px; background:#f8fafc; border-radius:8px; margin-bottom:15px; border:1px solid var(--border);"></div>
+                    <div id="childGradesContainer" style="margin-top:15px;"></div>
+                    <h5 style="margin-top:15px; margin-bottom:10px;">Continuous Assessment Feed Logs</h5>
+                    <div id="reportCardContainer"></div>
+                    <div id="attendanceContainer" style="margin-top:15px;"></div>
+                </div>
+                
+                <div id="panelComm" class="workspace-panel">
+                    <h4>Institutional Streams</h4>
+                    <div style="display:flex; gap:10px; margin-bottom:20px; margin-top:10px;">
+                        <button id="btnSubDm" class="btn-primary" style="padding:8px 12px; font-size:13px; background:var(--primary);">Direct Message Thread</button>
+                        <button id="btnSubForum" class="btn-primary" style="padding:8px 12px; font-size:13px; background:#6c757d;">PTA Open Forum Board</button>
+                    </div>
                     
-                    <label style="display:block; margin-bottom:5px; font-weight:bold; color:#333;">Priority Urgency Level:</label>
-                    <select id="noticePriority" style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 4px; border: 1px solid #ccc; background: white; color: #333;">
-                        <option value="General">General Info ℹ️</option>
-                        <option value="Warning">Warning Alert ⚠️</option>
-                        <option value="Emergency">Critical Emergency 🚨</option>
-                    </select>
-                    <button id="btnPublishNotice" style="background-color: #2483ec;">Publish Notice to Board</button>
-                </div>
-
-                <div style="margin-top: 10px; border-top: 2px solid #9b5de5; padding-top: 15px;">
-                    <h4>Active Teacher Evaluations & Feedback</h4>
-                    <p style="color: #666; font-size: 14px;">Review real-time performance indicators and student complaints to manage school standards.</p>
-                    <div id="principalReviewsContainer">Loading administration feeds...</div>
-                </div>
-            `;
-
-            document.getElementById('btnToggleNoticeForm').addEventListener('click', () => {
-                const form = document.getElementById('noticeComposerForm');
-                form.style.display = form.style.display === 'none' ? 'block' : 'none';
-            });
-
-            document.getElementById('btnPublishNotice').addEventListener('click', async () => {
-                const titleVal = document.getElementById('noticeTitle').value.trim();
-                const messageVal = document.getElementById('noticeMessage').value.trim();
-                const priorityVal = document.getElementById('noticePriority').value;
-
-                if (!titleVal || !messageVal) {
-                    alert("Please provide a title and a message body for your notice!");
-                    return;
-                }
-
-                try {
-                    const { error: postErr } = await client
-                        .from('announcements')
-                        .insert([{ title: titleVal, message: messageVal, priority_level: priorityVal, author_name: "Principal Administration" }]);
-
-                    if (postErr) throw postErr;
-
-                    alert("Bulletin board updated! Announcement broadcasted successfully.");
-                    document.getElementById('noticeTitle').value = '';
-                    document.getElementById('noticeMessage').value = '';
-                    document.getElementById('noticeComposerForm').style.display = 'none';
-                    loadGlobalNoticeBoard();
-
-                } catch (err) { alert("Failed to broadcast announcement: " + err.message); }
-            });
-
-            const loadPrincipalReviewFeed = async () => {
-                const feedContainer = document.getElementById('principalReviewsContainer');
-                feedContainer.innerHTML = "Querying academic records...";
-
-                try {
-                    const { data: allReviews, error: fetchErr } = await client
-                        .from('reviews')
-                        .select(`rating, feedback_text, created_at, classes ( class_name, room_number )`)
-                        .order('created_at', { ascending: false });
-
-                    if (fetchErr) throw fetchErr;
-
-                    if (!allReviews || allReviews.length === 0) {
-                        feedContainer.innerHTML = "<p style='color:#666;'>No class evaluations have been submitted by students yet.</p>";
-                        return;
-                    }
-
-                    feedContainer.innerHTML = "";
-                    allReviews.forEach(review => {
-                        const className = review.classes ? review.classes.class_name : "Unknown Subject";
-                        const roomName = review.classes ? review.classes.room_number : "N/A";
-                        const starDisplay = "⭐".repeat(review.rating);
-                        let cardBorderColor = "#3ecf8e";
-                        if (review.rating <= 3) cardBorderColor = "#e0a914";
-                        if (review.rating <= 2) cardBorderColor = "#ff4a4a";
-
-                        const row = document.createElement('div');
-                        row.style.cssText = `background: #fff; padding: 15px; margin-bottom: 12px; border-radius: 6px; border-left: 5px solid ${cardBorderColor}; box-shadow: 0 2px 5px rgba(0,0,0,0.05); color:#333; text-align: left;`;
-                        row.innerHTML = `
-                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
-                                <div>
-                                    <strong style="font-size: 16px;">Subject: ${className}</strong> <br/>
-                                    <small style="color: #666;">📍 Location: ${roomName}</small>
-                                </div>
-                                <span style="font-size: 14px; background: #f0f0f0; padding: 4px 8px; border-radius: 4px;">${starDisplay}</span>
-                            </div>
-                            <div style="background: #f9f9f9; padding: 10px; border-radius: 4px; font-style: italic; color: #444; font-size: 14px; border-left: 2px solid #ddd;">
-                                "${review.feedback_text ? review.feedback_text : "No written comments left by student."}"
-                            </div>
-                            <div style="text-align: right; margin-top: 5px;">
-                                <small style="color: #999; font-size: 11px;">Submitted: ${new Date(review.created_at).toLocaleDateString()}</small>
-                            </div>
-                        `;
-                        feedContainer.appendChild(row);
-                    });
-
-                } catch (err) { feedContainer.innerHTML = "<p style='color:red;'>Failed to load review stream: " + err.message + "</p>"; }
-            };
-
-            loadPrincipalReviewFeed();
-            document.getElementById('btnRefreshReviews').addEventListener('click', loadPrincipalReviewFeed);
-
-        } else if (profile.role === 'parent') {
-            // 👪 NEW INTERACTIVE PARENT PORTAL HUB
-            document.getElementById('roleText').innerText = "👪 Role: Parent / Guardian Account";
-            
-            document.getElementById('portalContent').innerHTML = `
-                <p><strong>Parent Connection Command Center:</strong></p>
-                <button id="btnShowChildGrades" style="background-color: #2483ec; width:auto; margin-right:10px;">📊 Linked Student Grades</button>
-                <button id="btnShowCommHub" style="background-color: #9b5de5; width:auto;">💬 Communication Hub</button>
-
-                <div id="parentChildSection" style="margin-top: 20px; border-top: 2px solid #2483ec; padding-top: 15px; display: none; text-align: left;">
-                    <h4>Linked Student Progress Analytics</h4>
-                    <div id="childGradesContainer" style="color: #333;">Loading linked child dashboard records...</div>
-                </div>
-
-                <div id="parentCommSection" style="margin-top: 20px; border-top: 2px solid #9b5de5; padding-top: 15px; display: none; text-align: left;">
-                    <h4>Institutional Chat Rooms & Forums</h4>
-                    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                        <button id="btnOpenTeacherDM" style="background-color: #007bff; font-size: 13px; padding: 8px;">Direct Message Subject Teachers</button>
-                        <button id="btnOpenParentForum" style="background-color: #6c757d; font-size: 13px; padding: 8px;">Parent Community PTA Forum</button>
+                    <div id="subBlockDm" style="display:block; text-align:left;">
+                        <p style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">Send secure, direct administrative notifications to a specific instructor.</p>
+                        <label>Select Target Recipient</label>
+                        <select id="msgTeacherSelect"><option value="">Loading school faculty directory...</option></select>
+                        <label>Message Payload</label><textarea id="parentTeacherTxt" rows="3" placeholder="Compose private note details..."></textarea>
+                        <button id="btnSendTeacherMsg" class="btn-primary" style="margin-bottom: 25px;">Transmit Private Message</button>
+                        <h4 style="font-size:15px; border-top: 1px dashed var(--border); padding-top: 20px; margin-bottom: 10px;">📥 Incoming Instructor Responses</h4>
+                        <div id="parentIncomingDmsContainer">Checking inbox updates...</div>
                     </div>
-
-                    <div id="parentDmModule" style="display: none; background: #fff; padding: 15px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                        <h5>📨 Private Teacher Thread</h5>
-                        <input type="text" id="msgTeacherId" placeholder="Paste Teacher Account Profile ID" required />
-                        <textarea id="parentTeacherTxt" placeholder="Type your message directly to the classroom constructor..." rows="3" style="width:100%; box-sizing:border-box; border-radius:4px; padding:8px; font-family:inherit; margin-bottom:10px;"></textarea>
-                        <button id="btnSendTeacherMsg" style="background-color: #007bff;">Transmit Private Message</button>
-                    </div>
-
-                    <div id="parentForumModule" style="display: none; background: #fff; padding: 15px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                        <h5>🗣️ Open Community Forum</h5>
-                        <div id="forumChatFeed" style="height: 200px; overflow-y: auto; background: #f8f9fa; border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; border-radius: 4px;">Loading chats...</div>
-                        <textarea id="parentForumTxt" placeholder="Post a response or inquiry to the general parent board..." rows="2" style="width:100%; box-sizing:border-box; border-radius:4px; padding:8px; font-family:inherit; margin-bottom:10px;"></textarea>
-                        <button id="btnSendForumMsg" style="background-color: #6c757d;">Broadcast to Forum</button>
-                    </div>
-                </div>
-            `;
-
-            // Parent Workspace Submenu Visibility Layout Triggers
-            document.getElementById('btnShowChildGrades').addEventListener('click', () => {
-                document.getElementById('parentCommSection').style.display = 'none';
-                document.getElementById('parentChildSection').style.display = 'block';
-                loadLinkedChildMetrics();
-            });
-
-            document.getElementById('btnShowCommHub').addEventListener('click', () => {
-                document.getElementById('parentChildSection').style.display = 'none';
-                document.getElementById('parentCommSection').style.display = 'block';
-            });
-
-            document.getElementById('btnOpenTeacherDM').addEventListener('click', () => {
-                document.getElementById('parentForumModule').style.display = 'none';
-                document.getElementById('parentDmModule').style.display = 'block';
-            });
-
-            document.getElementById('btnOpenParentForum').addEventListener('click', () => {
-                document.getElementById('parentDmModule').style.display = 'none';
-                document.getElementById('parentForumModule').style.display = 'block';
-                loadPTAForumStream();
-            });
-
-            // --- FUNCTION: Query and Render Linked Child Performance ---
-            const loadLinkedChildMetrics = async () => {
-                const box = document.getElementById('childGradesContainer');
-                try {
-                    const { data: links, error: linkErr } = await client.from('parent_child_links').select('student_id').eq('parent_id', userId);
-                    if (linkErr) throw linkErr;
-                    if(!links || links.length === 0) {
-                        box.innerHTML = "<p style='color:#666;'>No registered students are linked to your profile code yet.</p>";
-                        return;
-                    }
                     
-                    const childIds = links.map(l => l.student_id);
-                    const { data: scores, error: scoreErr } = await client.from('grades').select(`week_number, score, classes(class_name), profiles!grades_student_id_fkey(full_name)`).in('student_id', childIds);
-                    if (scoreErr) throw scoreErr;
+                    <div id="subBlockForum" style="display:none; text-align:left;">
+                        <p style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">Live, open discussion board shared across all registered parent and staff accounts.</p>
+                        <div id="forumChatFeed" style="height:220px; overflow-y:auto; background:#f8fafc; border:1px solid var(--border); padding:12px; border-radius:8px; margin-bottom:12px; border-top: 3px solid var(--purple);"></div>
+                        <textarea id="parentForumTxt" rows="2" placeholder="Broadcast community query or note to the forum..."></textarea>
+                        <button id="btnSendForumMsg" class="btn-purple" style="background:var(--purple); color:white; width:100%; padding:12px; border-radius:8px; font-weight:600;">Broadcast to Forum</button>
+                    </div>
+                </div>
+            `;
 
-                    if(!scores || scores.length === 0) {
-                        box.innerHTML = "<p style='color:#666;'>Student linked successfully. No continuous evaluation scores found.</p>";
-                        return;
-                    }
+            document.getElementById('parentWardSelect').addEventListener('change', (e) => {
+                loadStudentReportCard(e.target.value);
+                loadStudentAttendance(e.target.value);
+            });
 
-                    box.innerHTML = scores.map(s => `
-                        <div style="background:#f8f9fa; padding:10px; margin-bottom:8px; border-left:4px solid #2483ec; border-radius:4px;">
-                            <strong>Child:</strong> ${s.profiles ? s.profiles.full_name : 'Linked Student'} <br/>
-                            <strong>Subject:</strong> ${s.classes ? s.classes.class_name : 'General'} (Week ${s.week_number})<br/>
-                            <strong>Performance Score:</strong> <span style="font-weight:bold; color:#2483ec;">${s.score} / 100</span>
-                        </div>
-                    `).join('');
-                } catch(err) { box.innerHTML = "<span style='color:red;'>Link Query Error: " + err.message + "</span>"; }
-            };
+            document.getElementById('navChild').addEventListener('click', (e) => { 
+                switchWorkspacePanel('panelChild', e.target); 
+                const currentWard = document.getElementById('parentWardSelect').value;
+                if(currentWard) { loadStudentReportCard(currentWard); loadStudentAttendance(currentWard); }
+            });
+            
+            document.getElementById('navComm').addEventListener('click', (e) => { 
+                switchWorkspacePanel('panelComm', e.target); 
+                fetchTeachersDropdownList(); 
+                loadParentIncomingDms();
+            });
+            
+            document.getElementById('btnSubDm').addEventListener('click', () => { 
+                document.getElementById('subBlockForum').style.display='none'; 
+                document.getElementById('subBlockDm').style.display='block'; 
+                document.getElementById('btnSubDm').style.background = 'var(--primary)';
+                document.getElementById('btnSubForum').style.background = '#6c757d';
+                loadParentIncomingDms();
+            });
+            document.getElementById('btnSubForum').addEventListener('click', () => { 
+                document.getElementById('subBlockDm').style.display='none'; 
+                document.getElementById('subBlockForum').style.display='block'; 
+                document.getElementById('btnSubForum').style.background = 'var(--purple)';
+                document.getElementById('btnSubDm').style.background = '#6c757d';
+                loadPTAForumStream(); 
+            });
 
-            // --- FUNCTION: General Message Hub Actions ---
             document.getElementById('btnSendTeacherMsg').addEventListener('click', async () => {
-                const targetTeacher = document.getElementById('msgTeacherId').value.trim();
+                const selectedTeacherUuid = document.getElementById('msgTeacherSelect').value;
                 const text = document.getElementById('parentTeacherTxt').value.trim();
-                if(!targetTeacher || !text) return alert("Please fill complete rows!");
+                if(!selectedTeacherUuid || !text) return alert("Verify core field parameters.");
                 try {
-                    const { error } = await client.from('messages').insert([{ sender_id: userId, receiver_id: targetTeacher, room_type: 'direct', message_text: text }]);
+                    const { error } = await client.from('messages').insert([{ sender_id: userId, receiver_id: selectedTeacherUuid, room_type: 'direct_message', message_text: text }]);
                     if(error) throw error;
-                    alert("Message securely transmitted!");
-                    document.getElementById('parentTeacherTxt').value = '';
-                } catch(err) { alert(err.message); }
+                    alert("Private notification securely locked and transmitted to instructor!");
+                    document.getElementById('parentTeacherTxt').value = "";
+                } catch(err) { alert("DM Transmission Fault: " + err.message); }
             });
-
-            const loadPTAForumStream = async () => {
-                const feed = document.getElementById('forumChatFeed');
-                try {
-                    const { data, error } = await client.from('messages').select(`message_text, created_at, profiles!messages_sender_id_fkey(full_name)`).eq('room_type', 'parent_forum').order('created_at', { ascending: true });
-                    if(error) throw error;
-                    feed.innerHTML = data.map(m => `
-                        <div style="margin-bottom:8px; padding:5px; background:#fff; border-radius:4px; font-size:13px; box-shadow:0 1px 2px rgba(0,0,0,0.05);">
-                            <strong style="color:#9b5de5;">${m.profiles ? m.profiles.full_name : 'Parent Account'}:</strong> ${m.message_text}
-                        </div>
-                    `).join('');
-                    feed.scrollTop = feed.scrollHeight;
-                } catch(err) { feed.innerHTML = "Error rendering chats."; }
-            };
 
             document.getElementById('btnSendForumMsg').addEventListener('click', async () => {
                 const text = document.getElementById('parentForumTxt').value.trim();
-                if(!text) return;
+                if(!text) return alert("Cannot broadcast empty parameters.");
                 try {
                     const { error } = await client.from('messages').insert([{ sender_id: userId, room_type: 'parent_forum', message_text: text }]);
                     if(error) throw error;
-                    document.getElementById('parentForumTxt').value = '';
-                    loadPTAForumStream();
+                    document.getElementById('parentForumTxt').value = "";
+                    loadPTAForumStream(); 
+                } catch(err) { alert("Forum Broadcast Issue: " + err.message); }
+            });
+
+            loadParentWardsDropdown();
+            document.getElementById('navChild').click();
+
+        // ==========================================
+        // 3. TEACHER GATEWAY
+        // ==========================================
+        } else if (userRole === 'Teacher') {
+            sidebarMenu.innerHTML = `
+                <button class="sidebar-btn" id="navTeacherAttn">📈 Log Class Attendance</button>
+                <button class="sidebar-btn" id="navTeacherGrades">📝 Grade Assessments</button>
+                <button class="sidebar-btn" id="navTeacherLms">📂 Broadcast Course Notes</button>
+                <button class="sidebar-btn" id="navTeacherInbox">📥 Parent Messages Inbox</button>
+            `;
+            
+            portalContent.innerHTML = `
+                <div id="panelTeacherAttn" class="workspace-panel">
+                    <h4>Daily Classroom Attendance Logger</h4>
+                    <label>Target Class Allocation</label><select id="teacherAttnClassSelect"></select>
+                    <label>Calendar Session Date</label><input type="date" id="teacherAttnDate" />
+                    <div id="attnRosterWrapper" style="margin-top:15px; margin-bottom:20px;">
+                        <h5 style="font-size:14px; margin-bottom:10px; font-weight:600;">Student Attendance Status Sheet:</h5>
+                        <div id="attnRosterContainer">Select a class group above to render student logs.</div>
+                    </div>
+                    <button id="btnSubmitAttendance" class="btn-success">Save Daily Class Log</button>
+                </div>
+
+                <div id="panelTeacherGrades" class="workspace-panel">
+                    <h4>Continuous Evaluation Grade Spreadsheet</h4>
+                    <label>Target Class Allocation</label><select id="teacherGradesClassSelect"></select>
+                    <label>Academic Evaluation Term Week</label>
+                    <select id="teacherGradeWeek">
+                        <option value="1">Continuous Assessment: Week 1</option>
+                        <option value="2">Continuous Assessment: Week 2</option>
+                        <option value="3">Continuous Assessment: Week 3</option>
+                        <option value="4">Continuous Assessment: Week 4</option>
+                    </select>
+                    <div id="gradesRosterWrapper" style="margin-top:15px; margin-bottom:20px;">
+                        <h5 style="font-size:14px; margin-bottom:10px; font-weight:600;">Evaluation Grid Spreadsheet:</h5>
+                        <div id="gradesRosterContainer">Select a class above to open grades sheets.</div>
+                    </div>
+                    <button id="btnSubmitGrades" class="btn-primary">Publish Academic Performance Scores</button>
+                </div>
+
+                <div id="panelTeacherLms" class="workspace-panel">
+                    <h4>LMS Resource Broadcaster</h4>
+                    <label>Resource Title</label><input type="text" id="lmsTitle" placeholder="e.g. Third Term Chemistry Scheme of Work" required />
+                    <label>Material Classification Type</label>
+                    <select id="lmsMaterialType">
+                        <option value="Note">📚 Scheme/Lecture Note</option>
+                        <option value="Assignment">📝 Take-Home Assignment</option>
+                        <option value="Handout">📂 Reference Handout</option>
+                    </select>
+                    <label>Target Class Allocation</label><select id="teacherLmsClassSelect"></select>
+                    <label>Document Resource Link URL</label><input type="url" id="lmsFileUrl" placeholder="https://drive.google.com/file/d/..." required />
+                    <button id="btnPublishLms" class="btn-primary" style="margin-top:10px;">Broadcast Resource to Students</button>
+                </div>
+
+                <div id="panelTeacherInbox" class="workspace-panel">
+                    <h4>📥 Parent Communications Inbox</h4>
+                    <div id="teacherInboxContainer" style="margin-top:15px; display: flex; flex-direction: column; gap: 12px;">Loading messages...</div>
+                </div>
+            `;
+
+            const loadTeacherInbox = async () => {
+                const inboxContainer = document.getElementById('teacherInboxContainer'); if (!inboxContainer) return;
+                try {
+                    const { data: directMessages, error } = await client.from('messages').select(`id, sender_id, message_text, created_at, profiles!messages_sender_id_fkey(full_name)`).eq('receiver_id', userId).eq('room_type', 'direct_message').order('created_at', { ascending: false });
+                    if (error) throw error;
+                    if (!directMessages || directMessages.length === 0) {
+                        inboxContainer.innerHTML = `<p style="color:var(--text-muted); font-size:14px; text-align:center; padding: 40px 0;">No direct messages from parents received yet.</p>`;
+                        return;
+                    }
+                    inboxContainer.innerHTML = directMessages.map(msg => `
+                        <div style="background:#f8fafc; padding:16px; border-radius:8px; border:1px solid var(--border); border-left:4px solid var(--primary); text-align:left;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                <strong style="color:var(--text-main); font-size:14px;">👤 Parent: ${msg.profiles ? msg.profiles.full_name : 'Unknown Parent'}</strong>
+                                <small style="color:var(--text-muted); font-size:11px;">${new Date(msg.created_at).toLocaleDateString()}</small>
+                            </div>
+                            <p style="color:#4a5568; font-size:14px; white-space: pre-wrap; margin-bottom: 12px;">${msg.message_text}</p>
+                            <button onclick="window.toggleReplyBlock('${msg.id}')" style="width:auto; padding:6px 12px; font-size:12px; background:var(--primary);">↩️ Write Reply</button>
+                            <div id="replyBlock_${msg.id}" style="display:none; margin-top:12px; background:#ffffff; padding:12px; border:1px solid var(--border); border-radius:6px;">
+                                <label style="font-size:12px;">Compose Response Statement</label>
+                                <textarea id="replyText_${msg.id}" rows="2" placeholder="Type response note..." style="margin-bottom:8px; font-size:13px;"></textarea>
+                                <button onclick="window.handleTeacherReply('${msg.sender_id}', '${msg.id}')" class="btn-success" style="width:auto; padding:6px 12px; font-size:12px;">Transmit Reply</button>
+                            </div>
+                        </div>
+                    `).join('');
+                } catch (err) { inboxContainer.innerHTML = err.message; }
+            };
+
+            document.getElementById('navTeacherAttn').addEventListener('click', (e) => { switchWorkspacePanel('panelTeacherAttn', e.target); populateTeacherClassDropdowns('teacherAttnClassSelect'); });
+            document.getElementById('navTeacherGrades').addEventListener('click', (e) => { switchWorkspacePanel('panelTeacherGrades', e.target); populateTeacherClassDropdowns('teacherGradesClassSelect'); });
+            document.getElementById('navTeacherLms').addEventListener('click', (e) => { switchWorkspacePanel('panelTeacherLms', e.target); populateTeacherClassDropdowns('teacherLmsClassSelect'); });
+            document.getElementById('navTeacherInbox').addEventListener('click', (e) => { switchWorkspacePanel('panelTeacherInbox', e.target); loadTeacherInbox(); });
+
+            document.getElementById('teacherAttnDate').valueAsDate = new Date();
+            document.getElementById('teacherAttnClassSelect').addEventListener('change', (e) => loadRosterForAttendance(e.target.value));
+            document.getElementById('teacherGradesClassSelect').addEventListener('change', (e) => loadRosterForGrades(e.target.value));
+
+            document.getElementById('btnSubmitAttendance').addEventListener('click', async () => {
+                const classId = document.getElementById('teacherAttnClassSelect').value;
+                const logDate = document.getElementById('teacherAttnDate').value;
+                const rows = document.querySelectorAll('#attnRosterContainer .roster-row');
+                if(!classId || !logDate || rows.length === 0) return alert("Roster logs configuration missing.");
+                const payload = Array.from(rows).map(r => ({ student_id: r.getAttribute('data-student'), class_id: parseInt(classId), attendance_date: logDate, status: r.querySelector('.attn-status-selector').value }));
+                try {
+                    const { error } = await client.from('attendance').insert(payload);
+                    if(error) throw error; alert("Daily attendance locked into system successfully!");
                 } catch(err) { alert(err.message); }
             });
 
-        } else {
-            // Student Menu Dashboard Persona
-            document.getElementById('roleText').innerText = "🎓 Role: Student Account";
-            document.getElementById('portalContent').innerHTML = `
-                <p><strong>Student Menu:</strong></p>
-                <button id="btnBrowseClasses" style="background-color: #3ecf8e; width:auto; margin-right:10px;">Browse & Enroll in Classes</button>
-                <button id="btnShowMySchedule" style="background-color: #3ecf8e; width:auto; margin-right:10px;">My Class Schedule</button>
-                <button id="btnShowReportCard" style="background-color: #2483ec; width:auto; margin-right:10px;">📊 View My Report Card</button>
-                <button id="btnShowMyAttendance" style="background-color: #e0a914; width:auto; margin-right:10px;">📈 View My Attendance</button>
-                <button id="btnShowReviewForm" style="background-color: #9b5de5; width:auto; margin-right:10px;">⭐ Rate My Classes</button>
-                <button id="btnShowLmsViewer" style="background-color: #f72585; width:auto;">📚 Course Notes & Assignments</button>
-
-                <div id="classList" style="margin-top: 20px; border-top: 1px solid #ccc; padding-top: 15px; display: none;">
-                    <h4>Available School Classes</h4>
-                    <div id="classesContainer">Loading classes...</div>
-                </div>
-
-                <div id="myScheduleSection" style="margin-top: 20px; border-top: 2px solid #2483ec; padding-top: 15px; display: none;">
-                    <h4>Your Enrolled Classes</h4>
-                    <div id="myScheduleContainer">Loading your schedule...</div>
-                </div>
-
-                <div id="reportCardSection" style="margin-top: 20px; border-top: 2px solid #e0a914; padding-top: 15px; display: none;">
-                    <h4>Your Weekly Test Grades</h4>
-                    <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; height: 220px;">
-                        <canvas id="myPerformanceChart"></canvas>
-                    </div>
-                    <div id="reportCardContainer">Loading your grades...</div>
-                </div>
-
-                <div id="attendanceSection" style="margin-top: 20px; border-top: 2px solid #e0a914; padding-top: 15px; display: none;">
-                    <h4>Your Attendance Analytics</h4>
-                    <div id="attendanceStats" style="background: #fff; padding: 15px; border-radius: 6px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); color:#333;">
-                        Calculating statistics...
-                    </div>
-                    <div id="attendanceContainer">Loading logs...</div>
-                </div>
-
-                <div id="reviewSection" style="margin-top: 20px; border-top: 2px solid #9b5de5; padding-top: 15px; display: none;">
-                    <h4>Submit Class Evaluation</h4>
-                    <input type="text" id="reviewClassId" placeholder="Class ID number" required />
-                    <label style="display:block; margin-bottom:5px; font-weight:bold; color:#333;">Rating Score:</label>
-                    <select id="reviewRating" style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 4px; border: 1px solid #ccc; background: white; color: #333;">
-                        <option value="5">⭐⭐⭐⭐⭐ (Excellent Teaching)</option>
-                        <option value="4">⭐⭐⭐⭐ (Very Good)</option>
-                        <option value="3">⭐⭐⭐ (Average / Needs Improvement)</option>
-                        <option value="2">⭐⭐ (Below Expectations)</option>
-                        <option value="1">⭐ (Unsatisfactory Standard)</option>
-                    </select>
-                    <textarea id="reviewText" placeholder="Type your written feedback or complaints here..." rows="4" style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 4px; border: 1px solid #ccc; font-family: inherit; box-sizing: border-box;"></textarea>
-                    <button id="btnSaveReview" style="background-color: #9b5de5;">Submit Evaluation to Administration</button>
-                </div>
-
-                <div id="studentLmsSection" style="margin-top: 20px; border-top: 2px solid #f72585; padding-top: 15px; display: none;">
-                    <h4>Downloadable Class Materials</h4>
-                    <p style="color: #666; font-size: 14px;">Access study guides, lecture records, and project assignments posted by your subject teachers.</p>
-                    <div id="studentLmsContainer">Loading course materials...</div>
-                </div>
-            `;
-
-            let performanceChartInstance = null;
-
-            const loadStudentReportCard = async () => {
-                const reportContainer = document.getElementById('reportCardContainer');
-                
-                try {
-                    const { data: myGrades, error: gradeErr } = await client
-                        .from('assessments')
-                        .select(`week_number, test_score, max_score, classes ( class_name )`)
-                        .eq('student_id', userId)
-                        .order('week_number', { ascending: true });
-
-                    if (gradeErr) throw gradeErr;
-
-                    if (!myGrades || myGrades.length === 0) {
-                        reportContainer.innerHTML = "<p style='color:#666;'>No test assessments have been uploaded for you yet.</p>";
-                        return;
-                    }
-
-                    const chartLabels = []; 
-                    const chartScores = [];  
-
-                    reportContainer.innerHTML = ""; 
-                    
-                    myGrades.forEach(grade => {
-                        const className = grade.classes ? grade.classes.class_name : "Unknown Subject";
-                        
-                        chartLabels.push(`${className} (Wk ${grade.week_number})`);
-                        chartScores.push(grade.test_score);
-
-                        const row = document.createElement('div');
-                        row.style.cssText = "background: #fff; padding: 12px; margin-bottom: 8px; border-radius: 4px; border-left: 4px solid #e0a914; box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; color: #333; text-align: left;";
-                        row.innerHTML = `
-                            <div>
-                                <strong>Subject: ${className}</strong><br/>
-                                <small style="color: #666;">📝 Continuous Assessment: Week ${grade.week_number}</small>
-                            </div>
-                            <div style="font-size: 16px; font-weight: bold; color: ${grade.test_score >= 50 ? '#3ecf8e' : '#ff4a4a'}">
-                                ${grade.test_score} / ${grade.max_score}
-                            </div>
-                        `;
-                        reportContainer.appendChild(row);
-                    });
-
-                    const ctx = document.getElementById('myPerformanceChart').getContext('2d');
-                    
-                    if (performanceChartInstance) {
-                        performanceChartInstance.destroy();
-                    }
-
-                    performanceChartInstance = new Chart(ctx, {
-                        type: 'bar', 
-                        data: {
-                            labels: chartLabels, 
-                            datasets: [{
-                                label: 'Your Test Performance',
-                                data: chartScores, 
-                                backgroundColor: '#2483ec', 
-                                borderColor: '#1e6ec5',
-                                borderWidth: 1,
-                                borderRadius: 5
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            scales: {
-                                y: { beginAtZero: true, max: 100 }
-                            }
-                        }
-                    });
-
-                } catch (err) {
-                    reportContainer.innerHTML = "<p style='color:red;'>Error loading report card: " + err.message + "</p>";
-                }
-            };
-
-            const loadStudentSchedule = async () => {
-                const scheduleContainer = document.getElementById('myScheduleContainer');
-                try {
-                    const { data: myEnrollments, error: scheduleErr } = await client
-                        .from('enrollments')
-                        .select(`class_id, classes ( class_name, room_number )`)
-                        .eq('student_id', userId);
-
-                    if (scheduleErr) throw scheduleErr;
-
-                    if (!myEnrollments || myEnrollments.length === 0) {
-                        scheduleContainer.innerHTML = "<p style='color:#666;'>You haven't enrolled in any classes yet.</p>";
-                        return;
-                    }
-
-                    scheduleContainer.innerHTML = ""; 
-                    myEnrollments.forEach(item => {
-                        if (item.classes) {
-                            const row = document.createElement('div');
-                            row.style.cssText = "background: #fff; padding: 10px; margin-bottom: 8px; border-radius: 4px; border-left: 4px solid #2483ec; box-shadow: 0 2px 4px rgba(0,0,0,0.05); color: #333; text-align: left;";
-                            row.innerHTML = `<strong>${item.classes.class_name}</strong> — 📍 ${item.classes.room_number}`;
-                            scheduleContainer.appendChild(row);
-                        }
-                    });
-                } catch (err) {
-                    scheduleContainer.innerHTML = "<p style='color:red;'>Error loading schedule: " + err.message + "</p>";
-                }
-            };
-// ==========================================
-// ==========================================
-    // 4. THE SCRIPT LISTENERS (STUDENT SIDE)
-    // ==========================================
-    
-    // Initial hidden states for student views
-    document.getElementById('studentLmsSection').style.display = 'none';
-    document.getElementById('reviewSection').style.display = 'none';
-    document.getElementById('attendanceSection').style.display = 'none';
- 
-    // Toggle: Show Schedule
-    document.getElementById('btnShowMySchedule').addEventListener('click', () => {
-        document.getElementById('classList').style.display = 'none'; 
-        document.getElementById('reportCardSection').style.display = 'none'; 
-        document.getElementById('attendanceSection').style.display = 'none';
-        document.getElementById('reviewSection').style.display = 'none';
-        document.getElementById('studentLmsSection').style.display = 'none';
-        document.getElementById('myScheduleSection').style.display = 'block'; 
-        loadStudentSchedule(); 
-    });
- 
-    // Toggle: Show Report Card
-    document.getElementById('btnShowReportCard').addEventListener('click', () => {
-        document.getElementById('classList').style.display = 'none'; 
-        document.getElementById('myScheduleSection').style.display = 'none'; 
-        document.getElementById('attendanceSection').style.display = 'none';
-        document.getElementById('reviewSection').style.display = 'none';
-        document.getElementById('studentLmsSection').style.display = 'none';
-        document.getElementById('reportCardSection').style.display = 'block'; 
-        loadStudentReportCard(); 
-    });
- 
-    // Fire up the institutional bulletin feed instantly for everyone upon login
-    loadGlobalNoticeBoard();
- 
-    // --- 📊 FUNCTION: Fetch Attendance and Calculate Stats ---
-    const loadStudentAttendance = async () => {
-        const statsBox = document.getElementById('attendanceStats');
-        const logsContainer = document.getElementById('attendanceContainer');
-        
-        try {
-            // Fetch student logs, joining the classes table to get the subject name
-            const { data: records, error: attnErr } = await client
-                .from('attendance')
-                .select(`
-                    attendance_date,
-                    status,
-                    classes ( class_name )
-                `)
-                .eq('student_id', userId)
-                .order('attendance_date', { ascending: false }); // Show newest dates first
- 
-            if (attnErr) throw attnErr;
- 
-            if (!records || records.length === 0) {
-                statsBox.innerHTML = "<strong>Attendance Rate: 0%</strong>";
-                logsContainer.innerHTML = "<p style='color:#666;'>No daily attendance sessions have been logged for you yet.</p>";
-                return;
-            }
- 
-            // Math Counters
-            let totalDays = records.length;
-            let presentCount = 0;
-            let lateCount = 0;
-            let absentCount = 0;
- 
-            logsContainer.innerHTML = ""; // Clear loader text
- 
-            records.forEach(log => {
-                if (log.status === 'Present') presentCount++;
-                if (log.status === 'Late') lateCount++;
-                if (log.status === 'Absent') absentCount++;
- 
-                const className = log.classes ? log.classes.class_name : "Unknown Class";
-                
-                // Color formatting for statuses
-                let statusColor = '#3ecf8e'; // Green for Present
-                if (log.status === 'Late') statusColor = '#e0a914'; // Orange for Late
-                if (log.status === 'Absent') statusColor = '#ff4a4a'; // Red for Absent
- 
-                // Build individual history row
-                const row = document.createElement('div');
-                row.style.cssText = "background: #fff; padding: 10px; margin-bottom: 6px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.05); color:#333;";
-                row.innerHTML = `
-                    <div>
-                        <strong>${className}</strong> <br/>
-                        <small style="color: #666;">📅 ${log.attendance_date}</small>
-                    </div>
-                    <span style="font-weight: bold; color: ${statusColor};">${log.status}</span>
-                `;
-                logsContainer.appendChild(row);
-            });
- 
-            // Run the administrative metrics formula
-            const attendanceRate = Math.round(((presentCount + lateCount) / totalDays) * 100);
- 
-            // Display stats breakdown inside statsBox
-            statsBox.innerHTML = `
-                <div style="font-size: 18px; font-weight: bold; margin-bottom: 5px; color: ${attendanceRate >= 75 ? '#3ecf8e' : '#ff4a4a'};">
-                    Live Attendance Rate: ${attendanceRate}%
-                </div>
-                <small style="color: #555;"> Total Sessions: <strong>${totalDays}</strong> | Present: <strong>${presentCount}</strong> | Late: <strong>${lateCount}</strong> | Absent: <strong>${absentCount}</strong></small>
-            `;
- 
-        } catch (err) {
-            logsContainer.innerHTML = "<p style='color:red;'>Error loading attendance: " + err.message + "</p>";
-        }
-    };
- 
-    // Toggle: View My Attendance Panel
-    document.getElementById('btnShowMyAttendance').addEventListener('click', () => {
-        document.getElementById('classList').style.display = 'none'; 
-        document.getElementById('myScheduleSection').style.display = 'none'; 
-        document.getElementById('reportCardSection').style.display = 'none'; 
-        document.getElementById('reviewSection').style.display = 'none';
-        document.getElementById('studentLmsSection').style.display = 'none';
-        document.getElementById('attendanceSection').style.display = 'block'; // Show attendance panel
-        loadStudentAttendance(); // Fire the metrics query!
-    });
- 
-    // Toggle: Show Evaluation/Review Form
-    document.getElementById('btnShowReviewForm').addEventListener('click', () => {
-        document.getElementById('classList').style.display = 'none'; 
-        document.getElementById('myScheduleSection').style.display = 'none'; 
-        document.getElementById('reportCardSection').style.display = 'none'; 
-        document.getElementById('attendanceSection').style.display = 'none'; 
-        document.getElementById('studentLmsSection').style.display = 'none';
-        document.getElementById('reviewSection').style.display = 'block'; // Show review form!
-    });
- 
-    // --- 📝 CODE: Submit the Review Record to Supabase ---
-    document.getElementById('btnSaveReview').addEventListener('click', async () => {
-        const classId = document.getElementById('reviewClassId').value.trim();
-        const ratingVal = document.getElementById('reviewRating').value;
-        const feedbackVal = document.getElementById('reviewText').value.trim();
- 
-        if(!classId || !ratingVal) {
-            alert("Please provide a Class ID and choose a star rating score!");
-            return;
-        }
- 
-        try {
-            // Push the review into our cloud table
-            const { error: reviewErr } = await client
-                .from('reviews')
-                .insert([
-                    {
-                        class_id: parseInt(classId),
-                        student_id: userId,
-                        rating: parseInt(ratingVal),
-                        feedback_text: feedbackVal
-                    }
-                ]);
- 
-            if (reviewErr) {
-                // Catch unique constraint violations if they try to rate the same class twice
-                if (reviewErr.code === '23505') {
-                    throw new Error("You have already submitted an evaluation for this specific class!");
-                }
-                throw reviewErr;
-            }
- 
-            alert("Thank you! Your evaluation has been submitted to the school administration.");
-            
-            // Clear the form fields upon success
-            document.getElementById('reviewClassId').value = '';
-            document.getElementById('reviewText').value = '';
-            document.getElementById('reviewSection').style.display = 'none';
- 
-        } catch (err) {
-            alert("Failed to submit review: " + err.message);
-            console.error(err);
-        }
-    });
- 
-    // Toggle: Browse and Enroll in Classes
-    document.getElementById('btnBrowseClasses').addEventListener('click', async () => {
-        document.getElementById('myScheduleSection').style.display = 'none'; 
-        document.getElementById('reportCardSection').style.display = 'none';
-        document.getElementById('attendanceSection').style.display = 'none';
-        document.getElementById('reviewSection').style.display = 'none';
-        document.getElementById('studentLmsSection').style.display = 'none';
-        document.getElementById('classList').style.display = 'block';
-        
-        const container = document.getElementById('classesContainer');
-        container.innerHTML = "Fetching latest classes...";
- 
-        try {
-            const { data: schoolClasses, error: fetchError } = await client.from('classes').select('*');
-            if (fetchError) throw fetchError;
- 
-            if (schoolClasses.length === 0) {
-                container.innerHTML = "<p>No classes available yet.</p>";
-                return;
-            }
- 
-            container.innerHTML = ""; 
-            schoolClasses.forEach(course => {
-                const classRow = document.createElement('div');
-                classRow.style.cssText = "display: flex; justify-content: space-between; align-items: center; background: #f9f9f9; padding: 10px; margin-bottom: 8px; border-radius: 4px; border: 1px solid #ddd; color: #333;";
-                classRow.innerHTML = `
-                    <div>
-                        <strong>${course.class_name}</strong> <br/>
-                        <small style="color: #666;">📍 ${course.room_number}</small>
-                    </div>
-                    <button class="btnEnroll" data-id="${course.id}" style="background-color: #2483ec; width: auto; margin: 0; padding: 6px 12px; font-size: 13px;">Enroll</button>
-                `;
-                container.appendChild(classRow);
-            });
- 
-            // Handle Enrollment Button clicks
-            const enrollButtons = document.querySelectorAll('.btnEnroll');
-            enrollButtons.forEach(button => {
-                button.addEventListener('click', async (e) => {
-                    const classId = e.target.getAttribute('data-id');
-                    try {
-                        const { error: enrollError } = await client.from('enrollments').insert([{ student_id: userId, class_id: classId }]);
-                        if (enrollError) throw enrollError;
- 
-                        alert("Awesome! You have successfully enrolled.");
-                        e.target.innerText = "Enrolled ✅";
-                        e.target.style.backgroundColor = "#777";
-                        e.target.disabled = true;
-                    } catch (err) {
-                        alert("Enrollment failed: " + err.message);
-                    }
+            document.getElementById('btnSubmitGrades').addEventListener('click', async () => {
+                const classId = document.getElementById('teacherGradesClassSelect').value;
+                const weekNum = document.getElementById('teacherGradeWeek').value;
+                const rows = document.querySelectorAll('#gradesRosterContainer .roster-row');
+                if(!classId || rows.length === 0) return alert("Spreadsheet validation checks failed.");
+                const payload = []; let valid = true;
+                rows.forEach(r => {
+                    const val = r.querySelector('.student-score-input').value; if(!val) valid = false;
+                    payload.push({ student_id: r.getAttribute('data-student'), class_id: parseInt(classId), week_number: parseInt(weekNum), test_score: parseFloat(val), max_score: 100 });
                 });
+                if(!valid) return alert("Fulfill all students cell matrices.");
+                try {
+                    const { error } = await client.from('assessments').insert(payload);
+                    if(error) throw error; alert("Performance records securely uploaded!");
+                } catch(err) { alert(err.message); }
             });
-        } catch (err) {
-            container.innerHTML = "<p style='color:red;'>Failed to load classes: " + err.message + "</p>";
-        }
-    });
- 
-    // Toggle: Show the LMS Panel when clicked
-    document.getElementById('btnShowLmsViewer').addEventListener('click', () => {
-        document.getElementById('classList').style.display = 'none'; 
-        document.getElementById('myScheduleSection').style.display = 'none'; 
-        document.getElementById('reportCardSection').style.display = 'none'; 
-        document.getElementById('attendanceSection').style.display = 'none'; 
-        document.getElementById('reviewSection').style.display = 'none';
-        document.getElementById('studentLmsSection').style.display = 'block'; // Show LMS panel!
-        loadStudentLmsFeed();
-    });
- 
-    // --- 📂 FUNCTION: Fetch resources from the database dynamically ---
-    const loadStudentLmsFeed = async () => {
-        const container = document.getElementById('studentLmsContainer');
-        container.innerHTML = "Opening school resource vaults...";
- 
-        try {
-            // Pull the latest materials and join with the classes table to display matching subject tags
-            const { data: materials, error: lmsErr } = await client
-                .from('lms_materials')
-                .select(`
-                    id, title, material_type, file_url, uploaded_at,
-                    classes ( class_name )
-                `)
-                .order('uploaded_at', { ascending: false });
- 
-            if (lmsErr) throw lmsErr;
- 
-            if (!materials || materials.length === 0) {
-                container.innerHTML = "<p style='color:#666;'>No study materials or assignments have been uploaded yet.</p>";
-                return;
-            }
- 
-            container.innerHTML = ""; // Clear loader text
- 
-            materials.forEach(item => {
-                const subjectName = item.classes ? item.classes.class_name : "General Resource";
-                const typeBadgeColor = item.material_type === 'Note' ? '#2483ec' : '#f72585';
-                const typeIcon = item.material_type === 'Note' ? '📝' : '📂';
- 
-                const card = document.createElement('div');
-                card.style.cssText = "background: #fff; padding: 15px; margin-bottom: 12px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; border-left: 4px solid " + typeBadgeColor + "; color: #333;";
-                
-                card.innerHTML = `
-                    <div>
-                        <span style="background: ${typeBadgeColor}; color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; text-transform: uppercase;">
-                            ${typeIcon} ${item.material_type}
-                        </span>
-                        <strong style="display: block; font-size: 15px; margin-top: 5px;">${item.title}</strong>
-                        <small style="color: #777;">Subject: ${subjectName} | Shared: ${new Date(item.uploaded_at).toLocaleDateString()}</small>
-                    </div>
-                    <div>
-                        <a href="${item.file_url}" target="_blank" download style="background: #3ecf8e; color: white; padding: 8px 12px; border-radius: 4px; text-decoration: none; font-size: 13px; font-weight: bold; display: inline-block;">📥 Download</a>
-                    </div>
-                `;
-                container.appendChild(card);
-            });
- 
-        } catch (err) {
-            container.innerHTML = "<p style='color:red;'>Failed to load assets: " + err.message + "</p>";
-        }
-    };
- 
-} // Finishes Student Side Conditional Block
- 
-// =========================================================================
-// 👨‍👩‍👧‍👦 PART 1: THE NEW PARENT ROUTER WITHIN THE LOGIN FLOW
-// =========================================================================
-else if (userRole === 'Parent') {
-    document.getElementById('loginFormArea').style.display = 'none';
-    document.getElementById('dashboard').style.display = 'block';
-    
-    const parentSection = document.getElementById('parentDashboardSection');
-    if (parentSection) parentSection.style.display = 'block';
- 
-    if (document.getElementById('btnBrowseClasses')) document.getElementById('btnBrowseClasses').style.display = 'none';
-    if (document.getElementById('btnShowReviewForm')) document.getElementById('btnShowReviewForm').style.display = 'none';
- 
-    const { data: relation, error: relErr } = await client
-        .from('parent_student_relations')
-        .select('student_id')
-        .eq('parent_id', userId)
-        .maybeSingle();
- 
-    if (relErr) {
-        console.error("Error linking parent to student:", relErr.message);
-        alert("System error tracking student mapping details.");
-    } else if (relation && relation.student_id) {
-        const linkedChildId = relation.student_id;
-        loadChildDataForParent(linkedChildId);
-    } else {
-        alert("Welcome! Your parent account is active, but administration has not linked a student ID to your profile yet.");
-    }
-} // Finishes Parent Check Conditional Block
 
-    } catch (error) {
-        alert('Login Failed: ' + error.message);
-        console.error(error);
-    }
-}); // Finishes Login Event Listener Completely
- 
-// =========================================================================
-// 👨‍👩‍👧‍👦 PART 2: THE PARENT DATA-FETCHING ENGINE (PLACED SAFELY OUTSIDE FLOW)
-// =========================================================================
-const loadChildDataForParent = async (childId) => {
-    const parentAttnContainer = document.getElementById('parentChildAttendanceContainer');
-    const parentStatsBox = document.getElementById('parentAttendanceStats');
- 
-    if (!parentAttnContainer) return; 
-    parentAttnContainer.innerHTML = "Syncing academic tracking streams...";
- 
-    try {
-        const { data: records, error: fetchErr } = await client
-            .from('attendance')
-            .select(`
-                attendance_date,
-                status,
-                classes ( class_name )
-            `)
-            .eq('student_id', childId)
-            .order('attendance_date', { ascending: false });
- 
-        if (fetchErr) throw fetchErr;
- 
-        if (!records || records.length === 0) {
-            if (parentStatsBox) parentStatsBox.innerHTML = "<strong>Attendance Rate: 0%</strong>";
-            parentAttnContainer.innerHTML = "<p style='color:#666;'>No attendance logs registered for your child this term.</p>";
-            return;
-        }
- 
-        let totalSessions = records.length;
-        let present = 0, late = 0, absent = 0;
-        parentAttnContainer.innerHTML = ""; 
- 
-        records.forEach(log => {
-            if (log.status === 'Present') present++;
-            if (log.status === 'Late') late++;
-            if (log.status === 'Absent') absent++;
- 
-            const currentSubject = log.classes ? log.classes.class_name : "General Class";
-            let stateColor = '#3ecf8e'; 
-            if (log.status === 'Late') stateColor = '#e0a914';
-            if (log.status === 'Absent') stateColor = '#ff4a4a';
- 
-            const logRow = document.createElement('div');
-            logRow.style.cssText = "background: #fdfdfd; padding: 10px; margin-bottom: 6px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; border-left: 3px solid " + stateColor + "; color:#333; font-size:14px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);";
-            logRow.innerHTML = `
-                <div>
-                    <strong>${currentSubject}</strong> <br/>
-                    <small style="color: #777;">📅 ${log.attendance_date}</small>
-                </div>
-                <span style="font-weight: bold; color: ${stateColor};">${log.status}</span>
+            document.getElementById('btnPublishLms').addEventListener('click', async () => {
+                const title = document.getElementById('lmsTitle').value.trim();
+                const type = document.getElementById('lmsMaterialType').value;
+                const cid = document.getElementById('teacherLmsClassSelect').value;
+                const url = document.getElementById('lmsFileUrl').value.trim();
+                if(!title || !url || !cid) return alert("Fulfill all parameters.");
+                try {
+                    const { error } = await client.from('lms_materials').insert([{ title, material_type: type, class_id: parseInt(cid), file_url: url }]);
+                    if(error) throw error; alert("Resource live on student dashboards!");
+                    document.getElementById('lmsTitle').value = ""; document.getElementById('lmsFileUrl').value = "";
+                } catch(err) { alert(err.message); }
+            });
+
+            document.getElementById('navTeacherAttn').click();
+
+        // ==========================================
+        // 4. ADMIN & PRINCIPAL GATEWAY (RESTORED + INTEGRATED)
+        // ==========================================
+        } else if (userRole === 'Admin' || userRole === 'Principal') {
+            sidebarMenu.innerHTML = `
+                <button class="sidebar-btn" id="navAdminOverview">🏛️ Command Overview</button>
+                <button class="sidebar-btn" id="navAdminGrowth">🎯 Performance & Tiers</button>
+                <button class="sidebar-btn" id="navAdminClasses">🛠️ Course Structuring</button>
+                <button class="sidebar-btn" id="navAdminBulletins">📢 Post Notices</button>
+                <button class="sidebar-btn" id="navAdminInvites">🔑 Invitation Controls</button>
             `;
-            parentAttnContainer.appendChild(logRow);
-        });
- 
-        const percentage = Math.round(((present + late) / totalSessions) * 100);
- 
-        if (parentStatsBox) {
-            parentStatsBox.innerHTML = `
-                <div style="font-size: 16px; font-weight: bold; color: ${percentage >= 75 ? '#3ecf8e' : '#ff4a4a'};">
-                    Child's Live Attendance Rate: ${percentage}%
+            
+            portalContent.innerHTML = `
+                <div id="panelAdminOverview" class="workspace-panel">
+                    <h4>🏛️ Principal's Command Overview Center</h4>
+                    <p style="font-size:13px; color:var(--text-muted); margin-bottom:15px;">Real-time execution network monitors.</p>
+                    <div id="adminLiveGradeFeed" style="background:#f8fafc; border:1px solid var(--border); padding:12px; border-radius:8px;">Loading metrics...</div>
                 </div>
-                <small style="color: #666;">Total Checked: <strong>${totalSessions}</strong> | Present: <strong>${present}</strong> | Late: <strong>${late}</strong> | Absent: <strong>${absent}</strong></small>
+
+                <div id="panelAdminGrowth" class="workspace-panel">
+                    <h4>🎯 Real-Time Academic Standings (AI Grouping)</h4>
+                    <div id="adminStandingsContainer" style="margin-top:10px; margin-bottom:25px;">Loading...</div>
+                    <div style="background:#f8fafc; border:1px solid var(--border); padding:20px; border-radius:8px;">
+                        <h5>Deploy Remedial / Intervention Program</h5>
+                        <label>Target Deficient Student</label><select id="interventionStudentSelect"></select>
+                        <label>Intervention Course Context</label><select id="adminInterventionClassSelect"></select>
+                        <label>Target Improvement Focus Topic</label><input type="text" id="interventionTopic" placeholder="e.g., Fractional Calculus Review" />
+                        <button id="btnCreateIntervention" class="btn-primary" style="background:var(--purple); margin-top:5px;">Launch Target Intervention Program</button>
+                    </div>
+                    <h4 style="margin-top:25px; margin-bottom:10px;">📋 Live Scheduled Remedial Interventions</h4>
+                    <div id="adminInterventionsList"></div>
+                </div>
+
+                <div id="panelAdminClasses" class="workspace-panel">
+                    <h4>🛠️ Classroom Structure Builder</h4>
+                    <label>Course Name Title</label><input type="text" id="adminClassName" placeholder="e.g., JSS3 Mathematics" />
+                    <label>Room Number Block</label><input type="text" id="adminClassRoom" placeholder="e.g., Room B4" />
+                    <label>Assign Lead Faculty Teacher</label><select id="adminClassTeacherSelect"></select>
+                    <button id="btnAdminCreateClass" class="btn-primary" style="margin-top:5px;">Construct New Classroom Entity</button>
+                </div>
+
+                <div id="panelAdminBulletins" class="workspace-panel">
+                    <h4>📢 Broad Broadcast Notice Dispatcher</h4>
+                    <div style="background:#f8fafc; border:1px solid var(--border); padding:20px; border-radius:8px;">
+                        <label>Bulletin Header Title</label><input type="text" id="bulletinTitle" placeholder="School Resumption Notice" />
+                        <label>Categorization Group Badge</label>
+                        <select id="bulletinBadge">
+                            <option value="General">General</option>
+                            <option value="Urgent">Urgent</option>
+                            <option value="Academic">Academic</option>
+                            <option value="Event">Event</option>
+                        </select>
+                        <label>Detailed Announcement Memo Content</label><textarea id="bulletinContent" rows="4" placeholder="Write institutional bulletin metrics here..."></textarea>
+                        <button id="btnPostBulletin" class="btn-success" style="margin-top:10px;">Broadcast to Active Dashboards</button>
+                    </div>
+                </div>
+
+                <div id="panelAdminInvites" class="workspace-panel">
+                    <h4>🔑 Cryptographic Invitation Control Matrix</h4>
+                    <div style="background:#f8fafc; border:1px solid var(--border); padding:20px; border-radius:8px;">
+                        <label>Authorized Access Group Role</label>
+                        <select id="inviteRole">
+                            <option value="Teacher">Teacher</option>
+                            <option value="Student">Student</option>
+                            <option value="Parent">Parent</option>
+                        </select>
+                        <button id="btnGenerateInvite" class="btn-primary" style="margin-top:10px;">Generate Security Onboarding Key</button>
+                    </div>
+                    <div id="inviteLinkOutputBox" style="margin-top:15px; font-weight:600; font-size:13px; color:var(--success);"></div>
+                </div>
             `;
+
+            document.getElementById('navAdminOverview').addEventListener('click', (e) => { switchWorkspacePanel('panelAdminOverview', e.target); loadAdminLiveGradeFeed(); });
+            document.getElementById('navAdminGrowth').addEventListener('click', (e) => { switchWorkspacePanel('panelAdminGrowth', e.target); loadAdminStandings(); loadAdminInterventions(); populateAdminDropdowns(); });
+            document.getElementById('navAdminClasses').addEventListener('click', (e) => { switchWorkspacePanel('panelAdminClasses', e.target); populateAdminDropdowns(); });
+            document.getElementById('navAdminBulletins').addEventListener('click', (e) => { switchWorkspacePanel('panelAdminBulletins', e.target); });
+            document.getElementById('navAdminInvites').addEventListener('click', (e) => { switchWorkspacePanel('panelAdminInvites', e.target); });
+
+            document.getElementById('btnAdminCreateClass').addEventListener('click', async () => {
+                const name = document.getElementById('adminClassName').value.trim(); 
+                const room = document.getElementById('adminClassRoom').value.trim(); 
+                const tId = document.getElementById('adminClassTeacherSelect').value;
+                if(!name || !room) return alert("Fill core fields.");
+                try {
+                    const { error } = await client.from('classes').insert([{ class_name: name, room_number: room, teacher_id: tId || null }]);
+                    if(error) throw error; alert("Classroom deployed!"); document.getElementById('adminClassName').value=""; document.getElementById('adminClassRoom').value="";
+                } catch(err) { alert(err.message); }
+            });
+
+            document.getElementById('btnCreateIntervention').addEventListener('click', async () => {
+                const sId = document.getElementById('interventionStudentSelect').value; 
+                const cId = document.getElementById('adminInterventionClassSelect').value; 
+                const topic = document.getElementById('interventionTopic').value.trim();
+                if(!sId || !topic) return alert("Select student and focus topic.");
+                try {
+                    const { error } = await client.from('interventions').insert([{ student_id: sId, class_id: cId || null, subject_topic: topic, status: 'Active' }]);
+                    if(error) throw error; alert("Intervention strategy deployed!"); document.getElementById('interventionTopic').value = ""; loadAdminStandings(); loadAdminInterventions();
+                } catch(err) { alert(err.message); }
+            });
+
+            document.getElementById('btnPostBulletin').addEventListener('click', async () => {
+                const title = document.getElementById('bulletinTitle').value.trim(); 
+                const badge = document.getElementById('bulletinBadge').value; 
+                const content = document.getElementById('bulletinContent').value.trim();
+                if(!title || !content) return alert("Complete announcement form details.");
+                try {
+                    const { error } = await client.from('bulletins').insert([{ title, badge_type: badge, content }]);
+                    if(error) throw error; alert("Notice broadcast live system wide!"); document.getElementById('bulletinTitle').value=""; document.getElementById('bulletinContent').value=""; loadGlobalNoticeBoard();
+                } catch(err) { alert(err.message); }
+            });
+
+            document.getElementById('btnGenerateInvite').addEventListener('click', () => {
+                const role = document.getElementById('inviteRole').value;
+                const token = Math.random().toString(36).substring(2, 15);
+                const fullLink = `${window.location.origin}${window.location.pathname}?invite=${token}&role=${role}`;
+                document.getElementById('inviteLinkOutputBox').innerHTML = `🔑 Share key link safely:<br/><input type="text" value="${fullLink}" readonly style="margin-top:5px;" onclick="this.select(); document.execCommand('copy'); alert('Link copied!');"/>`;
+            });
+
+            document.getElementById('navAdminOverview').click();
+        } else {
+            portalContent.innerHTML = `<p style='padding:20px; background:#fff3cd; border-radius:8px; border:1px solid #ffeeba;'>Account logged in without a profile matching configured application workflows.</p>`;
         }
- 
-    } catch (err) {
-        parentAttnContainer.innerHTML = "<p style='color:red;'>Failed to compile monitoring data: " + err.message + "</p>";
-    }
-};
- 
-// ==========================================
-// 🚪 LOG OUT BUTTON LISTENER
-// ==========================================
-document.getElementById('btnLogOut').addEventListener('click', async () => {
-    try {
-        // 1. Sign out from Supabase Auth
-        const { error } = await client.auth.signOut();
-        if (error) throw error;
- 
-        // 2. Clear out any dynamically injected user HTML
-        const portalContent = document.getElementById('portalContent');
-        if (portalContent) {
-            portalContent.innerHTML = ''; // Safely wipe dashboard interface content
-        }
- 
-        // 3. Toggle main view panels cleanly
-        const dashboard = document.getElementById('dashboard');
-        const loginForm = document.getElementById('loginFormArea'); 
-        
-        if (dashboard) dashboard.style.display = 'none';
-        if (loginForm) loginForm.style.display = 'block';
- 
-        // 4. Force a page reload to completely reset application state safely
-        window.location.reload();
- 
-    } catch (error) {
-        alert("Logout Issue: " + error.message);
-    }
+    } catch (err) { alert("Login Error: " + err.message); }
 });
+
+if (document.getElementById('btnLogOut')) {
+    document.getElementById('btnLogOut').addEventListener('click', async () => {
+        await client.auth.signOut(); window.location.reload();
+    });
+}
 </script>
 </body>
 </html>
