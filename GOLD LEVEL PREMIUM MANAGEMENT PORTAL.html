@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>School Management Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght=300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>    
+    
+    <style>
+        /* --- PREMIUM UI/UX TOKENS --- */
+        :root {
+            --primary: #2483ec;
+            --primary-hover: #1b6ec5;
+            --success: #3ecf8e;
+            --success-hover: #34b27b;
+            --warning: #e0a914;
+            --danger: #ff4a4a;
+            --danger-hover: #e03b3b;
+            --purple: #9b5de5;
+            --pink: #f72585;
+            --bg-main: #f4f7f9;
+            --bg-card: #ffffff;
+            --text-main: #2d3748;
+            --text-muted: #718096;
+            --border: #e2e8f0;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { background: var(--bg-main); color: var(--text-main); line-height: 1.6; display: flex; min-height: 100vh; justify-content: center; align-items: flex-start; padding: 20px; }
+        
+        /* Layout Structure */
+        .app-container { width: 100%; max-width: 1100px; margin: 0 auto; }
+        header { background: var(--bg-card); padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); margin-bottom: 25px; border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        header h1 { font-size: 22px; color: var(--primary); font-weight: 700; }
+        
+        /* Auth Setup */
+        .auth-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 25px; margin-top: 40px; }
+        
+        /* Unified Card Layouts */
+        .card { background: var(--bg-card); padding: 30px; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05), 0 4px 6px -2px rgba(0,0,0,0.02); border: 1px solid var(--border); transition: transform 0.2s; }
+        .card h3, .card h4 { margin-bottom: 18px; font-weight: 600; color: #1a202c; font-size: 18px; }
+        
+        /* Interactive Input Formats */
+        input, select, textarea { width: 100%; padding: 12px; margin: 10px 0 18px 0; border-radius: 8px; border: 1px solid var(--border); font-size: 14px; background: #f8fafc; transition: all 0.2s; color: var(--text-main); }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(36, 131, 236, 0.15); background: #fff; }
+        label { font-size: 13px; font-weight: 600; color: #4a5568; }
+        
+        /* Modern Button Styles */
+        button, .btn { display: inline-flex; align-items: center; justify-content: center; width: 100%; padding: 12px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; border: none; cursor: pointer; transition: all 0.2s; white-space: nowrap; text-decoration: none; }
+        button:active, .btn:active { transform: scale(0.98); }
+        
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-hover); }
+        .btn-success { background: var(--success); color: white; }
+        .btn-success:hover { background: var(--success-hover); }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-danger:hover { background: var(--danger-hover); }
+        
+        /* Dashboard Wrapper Styles */
+        .dashboard-layout { display: grid; grid-template-columns: 260px 1fr; gap: 25px; margin-top: 20px; align-items: start; }
+        @media (max-width: 768px) { .dashboard-layout { grid-template-columns: 1fr; } }
+        
+        .sidebar { background: var(--bg-card); border-radius: 12px; padding: 20px; border: 1px solid var(--border); box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
+        .sidebar-btn { background: transparent; color: var(--text-main); text-align: left; justify-content: flex-start; margin-bottom: 8px; padding: 10px 14px; border-radius: 6px; width: 100%; font-size: 14px; font-weight: 600; display: flex; align-items: center; cursor: pointer; border: none; }
+        .sidebar-btn:hover, .sidebar-btn.active { background: #edf2f7; color: var(--primary); }
+        
+        /* Notice Board Elements */
+        .notice-container { background: var(--bg-card); border-radius: 12px; padding: 25px; margin-bottom: 25px; border-left: 5px solid var(--primary); box-shadow: 0 4px 6px rgba(0,0,0,0.02); border-top: 1px solid var(--border); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+        .bulletin-item { padding: 15px; border-bottom: 1px solid var(--border); margin-bottom: 10px; }
+        .bulletin-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+        .badge { display: inline-block; padding: 3px 8px; font-size: 11px; font-weight: 700; border-radius: 4px; text-transform: uppercase; margin-bottom: 6px; color: white; }
+        
+        /* Sub-panel Blocks */
+        .workspace-panel { display: none; animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Roster Layouts */
+        .roster-row { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid var(--border); background: #f8fafc; margin-bottom: 8px; border-radius: 6px; }
+        .roster-row:last-child { margin-bottom: 0; }
+
+        /* Admin Specific UI Counters */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .stat-box { background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 15px; text-align: center; }
+        .stat-box h5 { font-size: 12px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 5px; }
+        .stat-box span { font-size: 24px; font-weight: 700; color: var(--primary); }
+
+        /* Printable Report Overrides */
+        @media print {
+            body * { visibility: hidden; background: #fff !important; }
+            #printableReportCard, #printableReportCard * { visibility: visible; }
+            #printableReportCard { position: absolute; left: 0; top: 0; width: 100%; padding: 30px; border: none !important; }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <header class="no-print">
+        <h1>🏫 Institutional Management Portal</h1>
+        <div id="headerAuthStatus"><span style="font-size:14px; color: var(--text-muted);">Secure Gateway Active</span></div>
+    </header>
+    
+    <div id="loginFormArea" class="auth-grid no-print">
+        <!-- Create Account Panel (Locked unless valid invite token present) -->
+        <div class="card" id="registerCard">
+            <h3>Create Account</h3>
+            <div id="inviteGateBanner" style="background:#fee2e2; color:#991b1b; padding:12px; border-radius:6px; font-size:13px; margin-bottom:15px; font-weight:600; text-align:center;">
+                🔒 Registration Closed. You need an official admin invitation link to register.
+            </div>
+            <div id="registerFormFields" style="display:none;">
+                <label>Full Name</label>
+                <input type="text" id="fullName" placeholder="John Doe" required />
+                <label>Email Address</label>
+                <input type="email" id="email" placeholder="john@school.com" required />
+                <label>Password</label>
+                <input type="password" id="password" placeholder="••••••••" required />
+                <label>System Role Assignment</label>
+                <input type="text" id="roleDisplay" style="background:#e2e8f0; font-weight:600;" readonly />
+                <button id="btnSignUp" class="btn-success">Complete Secure Registration</button>
+            </div>
+        </div>
+ 
+        <div class="card" style="display:flex; flex-direction:column; justify-content:center;">
+            <h3>User Login</h3>
+            <label>Email Address</label>
+            <input type="email" id="loginEmail" placeholder="your@email.com" required />
+            <label>Password</label>
+            <input type="password" id="loginPassword" placeholder="••••••••" required />
+            <button id="btnLogin" class="btn-primary" style="margin-top: 10px;">Log In to Dashboard</button>
+        </div>
+    </div>
+ 
+    <div id="dashboard" style="display: none;">
+        
+        <div id="globalNoticeBoard" class="notice-container no-print" style="display:none;">
+            <h3 style="margin-bottom:15px; font-size:18px; display:flex; align-items:center; gap:8px;">📢 Institutional Bulletins & Notices</h3>
+            <div id="noticeFeedContainer" style="font-size:14px; color:var(--text-main);">Loading bulletins...</div>
+        </div>
+
+        <div class="dashboard-layout">
+            <div class="sidebar no-print">
+                <div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid var(--border);">
+                    <h2 id="welcomeText" style="font-size: 16px; font-weight:700;">Welcome!</h2>
+                    <p id="roleText" style="font-size: 12px; color: var(--text-muted); font-weight:500; margin-top:2px;"></p>
+                </div>
+                <div id="sidebarMenuButtons"></div>
+                <button id="btnLogOut" class="btn-danger" style="margin-top: 20px; padding: 10px;">Log Out</button>
+            </div>
+
+            <div class="card" id="mainWorkspaceCard" style="min-height: 400px; padding: 25px;">
+                <div id="portalContent"></div>
+            </div>
+        </div>
+    </div>
+</div>
+ 
+<script>
+const SUPABASE_URL = "https://jrhvbtmrjqevdonehhdk.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpyaHZidG1yanFldmRvbmVoaGRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyMDIzODUsImV4cCI6MjA5NDc3ODM4NX0.dycnNGLfCa8jCm234gBhRmImLRrVOCniYvQ_1qr8qZA";
+
+const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let userId = null;
+let userRole = null;
+let performanceChartInstance = null;
+let activeInviteToken = null;
+
+const processURLInvitationToken = async () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('invite');
+    if (!token) return;
+    try {
+        const { data, error } = await client.from('invitations').select('*').eq('token', token).eq('is_used', false).maybeSingle();
+        if (error) throw error;
+        if (data) {
+            activeInviteToken = token;
+            document.getElementById('inviteGateBanner').style.background = '#d1fae5';
+            document.getElementById('inviteGateBanner').style.color = '#065f46';
+            document.getElementById('inviteGateBanner').innerHTML = `✅ Valid Invitation Link Verified!<br/>Role Authorized: <strong>${data.assigned_role}</strong>`;
+            document.getElementById('roleDisplay').value = data.assigned_role;
+            document.getElementById('registerFormFields').style.display = 'block';
+        } else {
+            document.getElementById('inviteGateBanner').innerHTML = `❌ This invitation link is invalid or has already been used.`;
+        }
+    } catch (err) { console.error("Invitation check error:", err.message); }
+};
+window.addEventListener('DOMContentLoaded', processURLInvitationToken);
+
+const loadGlobalNoticeBoard = async () => {
+    const noticeBoard = document.getElementById('globalNoticeBoard');
+    const container = document.getElementById('noticeFeedContainer');
+    if (!container || !noticeBoard) return;
+    try {
+        const { data: notices, error } = await client.from('bulletins').select('*').order('created_at', { ascending: false });
+        if (error) throw error;
+        if (!notices || notices.length === 0) {
+            container.innerHTML = "<p style='color:var(--text-muted);'>No system notices posted at this time.</p>";
+            noticeBoard.style.display = 'block';
+            return;
+        }
+        noticeBoard.style.display = 'block'; container.innerHTML = "";
+        notices.forEach(item => {
+            const row = document.createElement('div'); row.className = 'bulletin-item';
+            let badgeBg = 'var(--text-muted)';
+            if(item.badge_type === 'Urgent') badgeBg = 'var(--danger)';
+            if(item.badge_type === 'Academic') badgeBg = 'var(--primary)';
+            row.innerHTML = `
+                <span class="badge" style="background: ${badgeBg};">${item.badge_type}</span>
+                <strong style="display:block; font-size:15px; margin-bottom:4px; color:#1a202c;">${item.title}</strong>
+                <p style="color:#4a5568; font-size:14px; margin-bottom:5px;">${item.content}</p>
+                <small style="color:var(--text-muted); font-size:11px;">Posted: ${new Date(item.created_at).toLocaleDateString()}</small>
+            `;
+            container.appendChild(row);
+        });
+    } catch (err) { container.innerHTML = "<p style='color:var(--danger);'>Notice board pipeline offline.</p>"; }
+};
+
+// ==========================================
+// DATA EXTRACTION ENGINE (UNIVERSAL DISPATCHERS)
+// ==========================================
+const loadStudentReportCard = async (targetStudentId = userId) => {
+    const container = document.getElementById('reportCardContainer'); if (!container) return;
+    try {
+        const { data: grades, error } = await client.from('assessments').select('week_number, test_score, max_score, classes(class_name)').eq('student_id', targetStudentId).order('week_number', { ascending: true });
+        if (error) throw error;
+        
+        let reportMarkup = `
+            <div id="printableReportCard" style="background:#fff; padding:20px; border-radius:8px;">
+                <div style="text-align:center; border-bottom:3px double var(--primary); padding-bottom:15px; margin-bottom:20px;">
+                    <h2 style="color:var(--primary); font-size:26px; margin:0;">EXCELLENCE ACADEMY REPORT SHEET</h2>
+                    <p style="font-size:12px; color:var(--text-muted); margin:4px 0 0 0;">Official Term Academic Transcription</p>
+                </div>
+                <table style="width:100%; border-collapse:collapse; margin-top:15px; text-align:left;">
+                    <thead>
+                        <tr style="background:var(--primary); color:#fff;">
+                            <th style="padding:10px; border:1px solid var(--border);">Subject Title</th>
+                            <th style="padding:10px; border:1px solid var(--border);">Evaluation (Week)</th>
+                            <th style="padding:10px; border:1px solid var(--border);">Score Achieved</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        if (!grades || grades.length === 0) { 
+            container.innerHTML = "<tr><td colspan='3' style='text-align:center; padding: 20px; color: var(--text-muted);'>Grades pending compilation.</td></tr>"; 
+            document.getElementById('reportCardPrintWrapper').innerHTML = "";
+            if (performanceChartInstance) performanceChartInstance.destroy();
+            return; 
+        }
+        
+        container.innerHTML = "";
+        const labels = [], scores = [];
+        
+        grades.forEach((g, index) => {
+            labels.push(`${g.classes?g.classes.class_name:'Class'} Wk ${g.week_number}`); 
+            scores.push(g.test_score);
+            let gradeLetter = g.test_score >= 75 ? 'A' : g.test_score >= 50 ? 'C' : 'F';
+
+            container.innerHTML += `
+                <tr style="background:${index%2===0?'#fff':'#f8fafc'}; border-bottom: 1px solid var(--border);">
+                    <td style="padding:12px;"><strong>${g.classes ? g.classes.class_name : 'Subject'}</strong></td>
+                    <td style="padding:12px;">Continuous Assessment Week ${g.week_number}</td>
+                    <td style="padding:12px; font-weight:700;">${g.test_score} / ${g.max_score}</td>
+                </tr>
+            `;
+            reportMarkup += `<tr><td style="padding:10px; border:1px solid var(--border); font-weight:600;">${g.classes?g.classes.class_name:'Subject'}</td><td style="padding:10px; border:1px solid var(--border);">Week ${g.week_number}</td><td style="padding:10px; border:1px solid var(--border); font-weight:700;">${g.test_score}/${g.max_score} (${gradeLetter})</td></tr>`;
+        });
+        
+        reportMarkup += `</tbody></table></div><button onclick="window.print()" class="btn-success no-print" style="margin-top:15px; max-width:200px;">🖨️ Print / Download PDF</button>`;
+        document.getElementById('reportCardPrintWrapper').innerHTML = reportMarkup;
+
+        if (performanceChartInstance) performanceChartInstance.destroy();
+        performanceChartInstance = new Chart(document.getElementById('myPerformanceChart').getContext('2d'), {
+            type: 'bar', data: { labels, datasets: [{ label: 'Metrics', data: scores, backgroundColor: '#2483ec', borderRadius: 4 }] },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    } catch (err) { container.innerHTML = err.message; }
+};
+
+// Parent Specific Sub-loaders
+const loadParentWardsData = async () => {
+    try {
+        // Automatically fetch all students in the system to simulate ward association for view modeling
+        const { data: wards, error } = await client.from('profiles').select('id, full_name').eq('role', 'Student');
+        if (error) throw error;
+        
+        const wardSelector = document.getElementById('parentWardSelect');
+        if (wards && wards.length > 0) {
+            wardSelector.innerHTML = wards.map(w => `<option value="${w.id}">${w.full_name}</option>`).join('');
+            // Auto load first student's card and information details
+            loadStudentReportCard(wardSelector.value);
+            loadParentFinancialsAndRemedials(wardSelector.value);
+        } else {
+            wardSelector.innerHTML = `<option value="">No registered wards linked</option>`;
+        }
+    } catch (err) { console.error(err); }
+};
+
+const loadParentFinancialsAndRemedials = async (studentId) => {
+    try {
+        // 1. Fetch Outstanding Bills
+        const { data: ledger } = await client.from('fee_ledgers').select('*').eq('student_id', studentId).maybeSingle();
+        const feeContainer = document.getElementById('parentFeeStatusBox');
+        if (ledger) {
+            const balance = parseFloat(ledger.total_term_fee) - parseFloat(ledger.amount_paid);
+            feeContainer.innerHTML = `
+                <div style="background:#fff; border:1px solid var(--border); padding:15px; border-radius:8px;">
+                    <p style="font-size:14px; margin-bottom:5px;">Termly Total Allocation: <strong>₦${parseFloat(ledger.total_term_fee).toLocaleString()}</strong></p>
+                    <p style="font-size:14px; margin-bottom:5px; color:var(--success);">Amount Remitted: <strong>₦${parseFloat(ledger.amount_paid).toLocaleString()}</strong></p>
+                    <hr style="border:0; border-top:1px solid var(--border); margin:10px 0;"/>
+                    <p style="font-size:16px; font-weight:700; color:${balance > 0 ? 'var(--danger)' : 'var(--success)'};">
+                        ${balance > 0 ? `Outstanding Balance: ₦${balance.toLocaleString()}` : '✅ Tuition Fully Settled'}
+                    </p>
+                </div>`;
+        } else {
+            feeContainer.innerHTML = `<div style="background:#fff; border:1px solid var(--border); padding:15px; border-radius:8px; text-align:center; color:var(--text-muted); font-size:13px;">No tuition ledger posted for this term.</div>`;
+        }
+
+        // 2. Fetch Active Intervention Tracks
+        const { data: interventions } = await client.from('interventions').select('subject_topic, status').eq('student_id', studentId).not('status', 'eq', 'Completed');
+        const interventionContainer = document.getElementById('parentInterventionBox');
+        if (interventions && interventions.length > 0) {
+            interventionContainer.innerHTML = interventions.map(i => `
+                <div style="background:#fff; border-left:4px solid var(--purple); padding:10px 15px; border-radius:6px; margin-bottom:8px; font-size:13px;">
+                    <strong>🎯 Remedial Program: ${i.subject_topic}</strong>
+                    <span style="display:block; font-size:11px; color:var(--purple); font-weight:600; margin-top:2px;">Status: ${i.status}</span>
+                </div>`).join('');
+        } else {
+            interventionContainer.innerHTML = `<p style="color:var(--text-muted); font-size:13px;">Ward is maintaining optimal standing. No remedial interventions needed.</p>`;
+        }
+    } catch (err) { console.error(err); }
+};
+
+// Admin Specific Loaders
+const loadAdminStandings = async () => {
+    const container = document.getElementById('adminStandingsContainer'); if (!container) return;
+    try {
+        const { data: standings, error } = await client.from('student_academic_standings').select('*');
+        if (error) throw error;
+        
+        if (!standings || standings.length === 0) {
+            container.innerHTML = "<p style='color:var(--text-muted);'>Assign grades first to populate analytics metrics.</p>";
+            return;
+        }
+
+        container.innerHTML = standings.map(s => `
+            <div style="display:flex; justify-content:space-between; align-items:center; background:#fff; padding:12px; border:1px solid var(--border); border-radius:8px; margin-bottom:8px;">
+                <div>
+                    <strong style="font-size:14px;">👤 ${s.full_name}</strong>
+                    <span style="display:block; font-size:12px; color:var(--text-muted)">Average: ${parseFloat(s.score_average).toFixed(1)}%</span>
+                </div>
+                <span class="tier-badge tier-${s.academic_tier}">${s.academic_tier}</span>
+            </div>
+        `).join('');
+
+        const selectBox = document.getElementById('interventionStudentSelect');
+        if(selectBox) {
+            selectBox.innerHTML = `<option value="">-- Choose Target Student --</option>` + 
+                standings.map(s => `<option value="${s.student_id}">${s.full_name} (${s.academic_tier})</option>`).join('');
+        }
+    } catch (err) { container.innerHTML = err.message; }
+};
+
+const loadAdminInterventions = async () => {
+    const container = document.getElementById('adminInterventionsList'); if (!container) return;
+    try {
+        const { data, error } = await client.from('interventions').select('id, subject_topic, status, profiles(full_name), classes(class_name)');
+        if (error) throw error;
+        if (!data || data.length === 0) {
+            container.innerHTML = "<p style='color:var(--text-muted); font-size:13px;'>No remedial tracks created yet.</p>";
+            return;
+        }
+        container.innerHTML = data.map(i => `
+            <div style="background:#fff; border:1px solid var(--border); padding:10px; border-radius:6px; margin-bottom:8px; font-size:13px; display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <strong>🧒 ${i.profiles ? i.profiles.full_name : 'Student'}</strong>
+                    <span style="color:var(--text-muted); display:block; font-size:11px;">Program: ${i.subject_topic} (${i.classes ? i.classes.class_name : 'General'})</span>
+                </div>
+                <span style="font-weight:700; color:var(--purple); font-size:12px;">⚙️ ${i.status}</span>
+            </div>
+        `).join('');
+    } catch (err) { container.innerHTML = err.message; }
+};
+
+const loadAdminDashboardData = async () => {
+    try {
+        const { data: liveGrades } = await client.from('assessments').select('test_score, max_score, created_at, classes(class_name), profiles!assessments_student_id_fkey(full_name)').order('created_at', {ascending: false}).limit(3);
+        if(liveGrades) {
+            document.getElementById('adminLiveGradeFeed').innerHTML = liveGrades.map(g => `
+                <div style="padding:8px; background:#fff; border-radius:6px; margin-bottom:6px; border:1px solid var(--border); font-size:12px; display:flex; justify-content:space-between; align-items:center;">
+                    <span><strong>${g.profiles?g.profiles.full_name:'Student'}</strong> - ${g.classes?g.classes.class_name:'Class'}</span>
+                    <span style="color:var(--success); font-weight:700;">${g.test_score}/${g.max_score}</span>
+                </div>
+            `).join('');
+        }
+        const { data: teachers } = await client.from('profiles').select('id, full_name').eq('role', 'Teacher');
+        if(teachers) document.getElementById('adminClassTeacherSelect').innerHTML = `<option value="">-- Assign Instructor --</option>` + teachers.map(t => `<option value="${t.id}">${t.full_name}</option>`).join('');
+        const { data: classes } = await client.from('classes').select('id, class_name');
+        if(classes) document.getElementById('adminInterventionClassSelect').innerHTML = `<option value="">-- Choose Class Context --</option>` + classes.map(c => `<option value="${c.id}">${c.class_name}</option>`).join('');
+    } catch (err) { console.error(err); }
+};
+
+const switchWorkspacePanel = (targetId, triggerBtn) => {
+    document.querySelectorAll('.workspace-panel').forEach(p => p.style.display = 'none');
+    document.querySelectorAll('.sidebar-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(targetId).style.display = 'block';
+    if(triggerBtn) triggerBtn.classList.add('active');
+};
+
+// ==========================================
+// AUTH ROUTING SYSTEM 
+// ==========================================
+document.getElementById('btnSignUp').addEventListener('click', async () => {
+    const fullName = document.getElementById('fullName').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const assignedRole = document.getElementById('roleDisplay').value;
+    try {
+        const { data, error } = await client.auth.signUp({ email, password });
+        if (error) throw error;
+        if (data.user) {
+            await client.from('profiles').insert([{ id: data.user.id, full_name: fullName, role: assignedRole }]);
+            await client.from('invitations').update({ is_used: true }).eq('token', activeInviteToken);
+            alert("Account verified and securely created!"); window.location.search = "";
+        }
+    } catch (err) { alert(err.message); }
+});
+
+document.getElementById('btnLogin').addEventListener('click', async () => {
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    try {
+        const { data: authData, error: authError } = await client.auth.signInWithPassword({ email, password });
+        if (authError) throw authError;
+
+        userId = authData.user.id;
+        const { data: profile, error: profileError } = await client.from('profiles').select('full_name, role').eq('id', userId).maybeSingle();
+        if (profileError) throw profileError;
+
+        userRole = profile ? profile.role : "None";
+        document.getElementById('welcomeText').innerText = profile ? profile.full_name : "User";
+        document.getElementById('roleText').innerText = `Role: ${userRole}`;
+        document.getElementById('loginFormArea').style.display = 'none';
+        document.getElementById('dashboard').style.display = 'block';
+
+        const sidebarMenu = document.getElementById('sidebarMenuButtons');
+        const portalContent = document.getElementById('portalContent');
+
+        loadGlobalNoticeBoard();
+
+        // ==========================================
+        // 1. STUDENT GATEWAY (CONSOLIDATED)
+        // ==========================================
+        if (userRole === 'Student') {
+            sidebarMenu.innerHTML = `
+                <button class="sidebar-btn" id="navGrades">📊 Report Card</button>
+                <button class="sidebar-btn" id="navStudentNotes">📚 Course Notes</button>
+                <button class="sidebar-btn" id="navStudentAttendance">📅 My Attendance</button>
+            `;
+            portalContent.innerHTML = `
+                <div id="panelGrades" class="workspace-panel">
+                    <h4>Official Academic Report</h4>
+                    <div style="height:150px; margin-bottom:20px;"><canvas id="myPerformanceChart"></canvas></div>
+                    <table style="width:100%; text-align:left; font-size:14px; margin-bottom:20px;">
+                        <thead><tr style="background:var(--primary); color:white;"><th style="padding:10px;">Subject</th><th style="padding:10px;">Context</th><th style="padding:10px;">Score</th></tr></thead>
+                        <tbody id="reportCardContainer"></tbody>
+                    </table>
+                    <div id="reportCardPrintWrapper"></div>
+                </div>
+
+                <div id="panelStudentNotes" class="workspace-panel">
+                    <h4>📚 Institutional Course Notes & Syllabus</h4>
+                    <p style="font-size: 13px; color: var(--text-muted); margin-bottom:15px;">Access learning materials uploaded by your instructors.</p>
+                    <div id="studentNotesContainer" style="background:#f8fafc; padding:15px; border-radius:8px; border:1px solid var(--border);">
+                        <p style="font-size:13px; color:var(--text-muted);">No notes uploaded for your assigned courses yet.</p>
+                    </div>
+                </div>
+
+                <div id="panelStudentAttendance" class="workspace-panel">
+                    <h4>📅 Personal Term Attendance Record</h4>
+                    <p style="font-size: 13px; color: var(--text-muted); margin-bottom:15px;">Your daily presence standing as logged by faculty.</p>
+                    <div id="studentAttendanceContainer" style="background:#f8fafc; padding:15px; border-radius:8px; border:1px solid var(--border);">
+                        <p style="font-size:13px; color:var(--text-muted);">Loading system roster history data...</p>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('navGrades').addEventListener('click', (e) => { switchWorkspacePanel('panelGrades', e.target); loadStudentReportCard(); });
+            document.getElementById('navStudentNotes').addEventListener('click', (e) => { switchWorkspacePanel('panelStudentNotes', e.target); });
+            document.getElementById('navStudentAttendance').addEventListener('click', (e) => { switchWorkspacePanel('panelStudentAttendance', e.target); });
+            
+            document.getElementById('navGrades').click();
+
+        // ==========================================
+        // 2. TEACHER GATEWAY (CONSOLIDATED)
+        // ==========================================
+        } else if (userRole === 'Teacher') {
+            sidebarMenu.innerHTML = `
+                <button class="sidebar-btn" id="navTeacherOverview">📝 Grade Evaluations</button>
+                <button class="sidebar-btn" id="navTeacherInterventions">⚙️ Assigned Interventions</button>
+                <button class="sidebar-btn" id="navTeacherAttendance">📅 Attendance Logger</button>
+                <button class="sidebar-btn" id="navTeacherComm">💬 Communicate to Parent</button>
+            `;
+            portalContent.innerHTML = `
+                <div id="panelTeacherOverview" class="workspace-panel">
+                    <h4>📝 Grade Entry & Evaluation Sheet</h4>
+                    <div style="background:#f8fafc; border:1px solid var(--border); padding:20px; border-radius:8px;">
+                        <label>Select Course / Class</label><select id="teacherClassSelect"></select>
+                        <label>Target Student</label><select id="teacherStudentSelect"></select>
+                        <label>Term Week Number</label><input type="number" id="evaluationWeek" placeholder="e.g., 1" />
+                        <label>Score Achieved</label><input type="number" id="evaluationScore" placeholder="e.g., 65" />
+                        <label>Max Possible Score</label><input type="number" id="evaluationMaxScore" value="100" />
+                        <button id="btnTeacherSubmitGrade" class="btn-success" style="margin-top:10px;">Upload Performance Metrics</button>
+                    </div>
+                </div>
+
+                <div id="panelTeacherInterventions" class="workspace-panel">
+                    <h4>⚙️ Active Remedial Intervention Programs</h4>
+                    <div id="teacherInterventionsList" style="margin-top:10px;">Loading...</div>
+                </div>
+
+                <div id="panelTeacherAttendance" class="workspace-panel">
+                    <h4>📅 Roster Attendance Logger</h4>
+                    <p style="font-size: 13px; color: var(--text-muted); margin-bottom:15px;">Mark standard daily roll call or class session presence.</p>
+                    <div style="background:#f8fafc; border:1px solid var(--border); padding:20px; border-radius:8px;">
+                        <label>Target Student</label><select id="attendanceStudentSelect"></select>
+                        <label>Status Standing</label>
+                        <select id="attendanceStatusSelect">
+                            <option value="Present">Present</option>
+                            <option value="Absent">Absent</option>
+                            <option value="Excused">Excused</option>
+                        </select>
+                        <button id="btnLogAttendance" class="btn-primary" style="margin-top:10px;">Commit Presence Log</button>
+                    </div>
+                </div>
+
+                <div id="panelTeacherComm" class="workspace-panel">
+                    <h4>💬 Direct Parent Outbound Correspondence</h4>
+                    <div style="background:#f8fafc; border:1px solid var(--border); padding:20px; border-radius:8px;">
+                        <label>Select Recipient Parent</label><select id="commParentSelect"><option value="">-- Choose Recipient --</option></select>
+                        <label>Message Content Draft</label><textarea id="teacherCommMessage" rows="4" placeholder="Type notification details here..."></textarea>
+                        <button id="btnTeacherSendMessage" class="btn-primary" style="margin-top:10px; background:var(--purple);">Transmit Correspondence</button>
+                    </div>
+                </div>
+            `;
+
+            const loadTeacherFormDropdowns = async () => {
+                try {
+                    const { data: cl } = await client.from('classes').select('id, class_name');
+                    if(cl) document.getElementById('teacherClassSelect').innerHTML = cl.map(c => `<option value="${c.id}">${c.class_name}</option>`).join('');
+                    const { data: st } = await client.from('profiles').select('id, full_name').eq('role', 'Student');
+                    if(st) {
+                        const opt = st.map(s => `<option value="${s.id}">${s.full_name}</option>`).join('');
+                        document.getElementById('teacherStudentSelect').innerHTML = opt;
+                        if(document.getElementById('attendanceStudentSelect')) document.getElementById('attendanceStudentSelect').innerHTML = opt;
+                    }
+                } catch(err) { console.error(err); }
+            };
+
+            const loadTeacherInterventions = async () => {
+                const container = document.getElementById('teacherInterventionsList'); if (!container) return;
+                try {
+                    const { data, error } = await client.from('interventions').select('id, subject_topic, status, profiles(full_name)').not('status', 'eq', 'Completed');
+                    if (error) throw error;
+                    if (!data || data.length === 0) { container.innerHTML = "<p style='color:var(--text-muted); font-size:13px;'>No active remedial tracks.</p>"; return; }
+                    container.innerHTML = data.map(i => `
+                        <div style="background:#f8fafc; border:1px solid var(--border); padding:15px; border-radius:8px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+                            <div><strong>🧒 ${i.profiles ? i.profiles.full_name : 'Student'}</strong><p style="font-size:13px;">Focus: ${i.subject_topic}</p></div>
+                            <button class="btn-primary btn-complete-intervention" data-id="${i.id}" style="width:auto; padding:6px 12px; background:var(--success);">Mark Complete</button>
+                        </div>`).join('');
+
+                    document.querySelectorAll('.btn-complete-intervention').forEach(btn => {
+                        btn.addEventListener('click', async (e) => {
+                            const targetId = e.target.getAttribute('data-id');
+                            const { error: updErr } = await client.from('interventions').update({ status: 'Completed' }).eq('id', targetId);
+                            if(!updErr) { alert("Intervention completed!"); loadTeacherInterventions(); }
+                        });
+                    });
+                } catch(err) { container.innerHTML = err.message; }
+            };
+
+            document.getElementById('navTeacherOverview').addEventListener('click', (e) => { switchWorkspacePanel('panelTeacherOverview', e.target); loadTeacherFormDropdowns(); });
+            document.getElementById('navTeacherInterventions').addEventListener('click', (e) => { switchWorkspacePanel('panelTeacherInterventions', e.target); loadTeacherInterventions(); });
+            document.getElementById('navTeacherAttendance').addEventListener('click', (e) => { switchWorkspacePanel('panelTeacherAttendance', e.target); loadTeacherFormDropdowns(); });
+            document.getElementById('navTeacherComm').addEventListener('click', (e) => { switchWorkspacePanel('panelTeacherComm', e.target); });
+
+            document.getElementById('btnTeacherSubmitGrade').addEventListener('click', async () => {
+                const cId = document.getElementById('teacherClassSelect').value; const sId = document.getElementById('teacherStudentSelect').value;
+                const wk = document.getElementById('evaluationWeek').value; const score = document.getElementById('evaluationScore').value; const max = document.getElementById('evaluationMaxScore').value;
+                if(!cId || !sId || !wk || !score) return alert("Fill core fields.");
+                const { error } = await client.from('assessments').insert([{ student_id: sId, class_id: cId, week_number: parseInt(wk), test_score: parseFloat(score), max_score: parseFloat(max) }]);
+                if(!error) { alert("Grade recorded!"); document.getElementById('evaluationScore').value = ""; }
+            });
+
+            document.getElementById('navTeacherOverview').click();
+
+        // ==========================================
+        // 3. PARENT GATEWAY (CONSOLIDATED)
+        // ==========================================
+        } else if (userRole === 'Parent') {
+            sidebarMenu.innerHTML = `
+                <button class="sidebar-btn" id="navParentAcademic">📊 Ward Performance</button>
+                <button class="sidebar-btn" id="navParentFinance">💳 Tuition & Fees</button>
+                <button class="sidebar-btn" id="navParentHub">💬 Communication Hub</button>
+            `;
+            portalContent.innerHTML = `
+                <div style="margin-bottom: 20px; background:#edf2f7; padding:15px; border-radius:8px; border:1px solid var(--border);">
+                    <label style="margin-bottom:5px; display:block;">Select Ward Profile Context</label>
+                    <select id="parentWardSelect" style="margin:0; background:#fff; font-weight:600;"></select>
+                </div>
+
+                <div id="panelParentAcademic" class="workspace-panel">
+                    <h4>📊 Academic Assessment Tracker</h4>
+                    <div style="height:150px; margin-bottom:20px; margin-top:10px;"><canvas id="myPerformanceChart"></canvas></div>
+                    <h5 style="margin-top:20px; margin-bottom:8px;">📋 Active Remedial Focus Assignments</h5>
+                    <div id="parentInterventionBox" style="margin-bottom:25px;">Monitoring...</div>
+                    <h5>📃 Full Continuous Assessment Report Sheet</h5>
+                    <table style="width:100%; text-align:left; font-size:14px; margin-top:10px;">
+                        <thead><tr style="background:var(--primary); color:white;"><th style="padding:10px;">Subject</th><th style="padding:10px;">Context</th><th style="padding:10px;">Score</th></tr></thead>
+                        <tbody id="reportCardContainer"></tbody>
+                    </table>
+                    <div id="reportCardPrintWrapper"></div>
+                </div>
+
+                <div id="panelParentFinance" class="workspace-panel">
+                    <h4>💳 Institutional Fees & Invoices</h4>
+                    <div id="parentFeeStatusBox">Loading transaction balances...</div>
+                </div>
+
+                <div id="panelParentHub" class="workspace-panel">
+                    <h4>💬 Parent-Teacher Correspondence Hub</h4>
+                    <p style="font-size: 13px; color: var(--text-muted); margin-bottom:15px;">Read historical update logs dispatched by system administrators or course lecturers.</p>
+                    <div id="parentInboxContainer" style="background:#f8fafc; padding:15px; border-radius:8px; border:1px solid var(--border);">
+                        <p style="font-size:13px; color:var(--text-muted);">Inbound mail queue clear. No new announcements logged.</p>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('parentWardSelect').addEventListener('change', (e) => {
+                loadStudentReportCard(e.target.value);
+                loadParentFinancialsAndRemedials(e.target.value);
+            });
+
+            document.getElementById('navParentAcademic').addEventListener('click', (e) => { 
+                switchWorkspacePanel('panelParentAcademic', e.target); 
+                const currentWard = document.getElementById('parentWardSelect').value; if(currentWard) loadStudentReportCard(currentWard);
+            });
+            document.getElementById('navParentFinance').addEventListener('click', (e) => { 
+                switchWorkspacePanel('panelParentFinance', e.target); 
+                const currentWard = document.getElementById('parentWardSelect').value; if(currentWard) loadParentFinancialsAndRemedials(currentWard);
+            });
+            document.getElementById('navParentHub').addEventListener('click', (e) => { switchWorkspacePanel('panelParentHub', e.target); });
+
+            loadParentWardsData();
+            document.getElementById('navParentAcademic').click();
+
+        // ==========================================
+        // 4. ADMIN / PRINCIPAL GATEWAY (CONSOLIDATED)
+        // ==========================================
+        } else if (userRole === 'Admin' || userRole === 'Principal') {
+            sidebarMenu.innerHTML = `
+                <button class="sidebar-btn" id="navAdminOverview">🏛️ Command Overview</button>
+                <button class="sidebar-btn" id="navAdminGrowth">🎯 Performance & Tiers</button>
+                <button class="sidebar-btn" id="navAdminClasses">🛠️ Course Structuring</button>
+                <button class="sidebar-btn" id="navAdminBulletins">📢 Post Notices</button>
+                <button class="sidebar-btn" id="navAdminInvites">🔑 Invitation Controls</button>
+            `;
+            portalContent.innerHTML = `
+                <div id="panelAdminOverview" class="workspace-panel">
+                    <h4>🏛️ Principal's Command Overview Center</h4>
+                    <div id="adminLiveGradeFeed" style="background:#f8fafc; border:1px solid var(--border); padding:12px; border-radius:8px; margin-top:10px;">Loading metrics...</div>
+                </div>
+
+                <div id="panelAdminGrowth" class="workspace-panel">
+                    <h4>🎯 Real-Time Academic Standings (AI Grouping)</h4>
+                    <div id="adminStandingsContainer" style="margin-top:10px; margin-bottom:25px;">Loading...</div>
+                    <div style="background:#f8fafc; border:1px solid var(--border); padding:20px; border-radius:8px;">
+                        <h5>Deploy Remedial / Intervention Program</h5>
+                        <label>Target Deficient Student</label><select id="interventionStudentSelect"></select>
+                        <label>Intervention Course Context</label><select id="adminInterventionClassSelect"></select>
+                        <label>Target Improvement Focus Topic</label><input type="text" id="interventionTopic" placeholder="e.g., Fractional Calculus Review" />
+                        <button id="btnCreateIntervention" class="btn-primary" style="background:var(--purple); margin-top:5px;">Launch Target Intervention Program</button>
+                    </div>
+                    <h4 style="margin-top:25px; margin-bottom:10px;">📋 Live Scheduled Remedial Interventions</h4>
+                    <div id="adminInterventionsList"></div>
+                </div>
+
+                <div id="panelAdminClasses" class="workspace-panel">
+                    <h4>🛠️ Classroom Structure Builder</h4>
+                    <label>Course Name Title</label><input type="text" id="adminClassName" />
+                    <label>Room Number Block</label><input type="text" id="adminClassRoom" />
+                    <label>Assign Lead Faculty Teacher</label><select id="adminClassTeacherSelect"></select>
+                    <button id="btnAdminCreateClass" class="btn-primary" style="margin-top:5px;">Construct New Classroom Entity</button>
+                </div>
+
+                <div id="panelAdminBulletins" class="workspace-panel">
+                    <h4>📢 Broad Broadcast Notice Dispatcher</h4>
+                    <div style="background:#f8fafc; border:1px solid var(--border); padding:20px; border-radius:8px;">
+                        <label>Bulletin Header Title</label><input type="text" id="bulletinTitle" placeholder="School Resumption Notice" />
+                        <label>Categorization Group Badge</label>
+                        <select id="bulletinBadge">
+                            <option value="General">General</option>
+                            <option value="Urgent">Urgent</option>
+                            <option value="Academic">Academic</option>
+                        </select>
+                        <label>Detailed Announcement Memo Content</label><textarea id="bulletinContent" rows="4" placeholder="Write institutional bulletin metrics here..."></textarea>
+                        <button id="btnPostBulletin" class="btn-success" style="margin-top:10px;">Broadcast to Active Dashboards</button>
+                    </div>
+                </div>
+
+                <div id="panelAdminInvites" class="workspace-panel">
+                    <h4>🔑 Cryptographic Invitation Control Matrix</h4>
+                    <div style="background:#f8fafc; border:1px solid var(--border); padding:20px; border-radius:8px;">
+                        <label>Authorized Access Group Role</label>
+                        <select id="inviteRole">
+                            <option value="Teacher">Teacher</option>
+                            <option value="Student">Student</option>
+                            <option value="Parent">Parent</option>
+                        </select>
+                        <button id="btnGenerateInvite" class="btn-primary" style="margin-top:10px;">Generate Security Onboarding Key</button>
+                    </div>
+                    <div id="inviteLinkOutputBox" style="margin-top:15px; font-weight:600; font-size:13px; color:var(--success);"></div>
+                </div>
+            `;
+
+            document.getElementById('navAdminOverview').addEventListener('click', (e) => { switchWorkspacePanel('panelAdminOverview', e.target); loadAdminDashboardData(); });
+            document.getElementById('navAdminGrowth').addEventListener('click', (e) => { switchWorkspacePanel('panelAdminGrowth', e.target); loadAdminStandings(); loadAdminInterventions(); loadAdminDashboardData(); });
+            document.getElementById('navAdminClasses').addEventListener('click', (e) => { switchWorkspacePanel('panelAdminClasses', e.target); loadAdminDashboardData(); });
+            document.getElementById('navAdminBulletins').addEventListener('click', (e) => { switchWorkspacePanel('panelAdminBulletins', e.target); });
+            document.getElementById('navAdminInvites').addEventListener('click', (e) => { switchWorkspacePanel('panelAdminInvites', e.target); });
+            
+            document.getElementById('btnAdminCreateClass').addEventListener('click', async () => {
+                const name = document.getElementById('adminClassName').value.trim(); const room = document.getElementById('adminClassRoom').value.trim(); const tId = document.getElementById('adminClassTeacherSelect').value;
+                if(!name || !room) return alert("Fill core fields.");
+                const { error } = await client.from('classes').insert([{ class_name: name, room_number: room, teacher_id: tId || null }]);
+                if(!error) { alert("Classroom deployed!"); document.getElementById('adminClassName').value=""; }
+            });
+
+            document.getElementById('btnCreateIntervention').addEventListener('click', async () => {
+                const sId = document.getElementById('interventionStudentSelect').value; const cId = document.getElementById('adminInterventionClassSelect').value; const topic = document.getElementById('interventionTopic').value.trim();
+                if(!sId || !topic) return alert("Select student and focus topic.");
+                const { error } = await client.from('interventions').insert([{ student_id: sId, class_id: cId || null, subject_topic: topic }]);
+                if(!error) { alert("Intervention strategy deployed!"); document.getElementById('interventionTopic').value = ""; loadAdminStandings(); loadAdminInterventions(); }
+            });
+
+            document.getElementById('btnPostBulletin').addEventListener('click', async () => {
+                const title = document.getElementById('bulletinTitle').value.trim(); const badge = document.getElementById('bulletinBadge').value; const content = document.getElementById('bulletinContent').value.trim();
+                if(!title || !content) return alert("Complete announcement form details.");
+                const { error } = await client.from('bulletins').insert([{ title, badge_type: badge, content }]);
+                if(!error) { alert("Notice broadcast live system wide!"); document.getElementById('bulletinTitle').value=""; document.getElementById('bulletinContent').value=""; loadGlobalNoticeBoard(); }
+            });
+
+            document.getElementById('btnGenerateInvite').addEventListener('click', async () => {
+                const role = document.getElementById('inviteRole').value;
+                const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+                const { error } = await client.from('invitations').insert([{ token, assigned_role: role }]);
+                if(!error) {
+                    const fullLink = `${window.location.origin}${window.location.pathname}?invite=${token}`;
+                    document.getElementById('inviteLinkOutputBox').innerHTML = `🔑 Share key link safely:<br/><input type="text" value="${fullLink}" readonly onclick="this.select(); document.execCommand('copy'); alert('Link copied to dashboard clipboard!');"/>`;
+                }
+            });
+
+            document.getElementById('navAdminOverview').click();
+        }
+    } catch (err) { alert("Error: " + err.message); }
+});
+</script>
